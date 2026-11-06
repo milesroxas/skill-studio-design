@@ -1,0 +1,42 @@
+#!/usr/bin/env node
+// Stand-in for the `claude` CLI while the reel is filmed: prints the stream-json a
+// real session prints and writes a release note, so a run costs nothing.
+import { mkdirSync, writeFileSync } from 'node:fs'
+const args = process.argv.slice(2)
+const model = args.includes('--model') ? args[args.indexOf('--model') + 1] : 'sonnet'
+const id = model === 'haiku' ? 'claude-haiku-5-5' : 'claude-sonnet-5-5'
+const NOTES = [
+  [/export/i, '# Export remembers your last folder\n\nThe export dialog now opens in the folder you last exported to. Repeat exports skip the folder prompt, so a weekly report takes one step less.\n\nFind it in Settings > Export. It is on for every account from today.\n'],
+  [/reports/i, '# /v1/reports is removed on 1 March 2027\n\nFrom 1 March 2027 the API no longer answers `/v1/reports`. Calls to it will fail, so move to `/v3/reports` before then.\n\n`/v3/reports` returns the same fields and adds `generated_at`. Nothing else in the API changes.\n\nFind the endpoint under Reports in the API reference.\n'],
+  [/offline/i, '# Offline edits no longer overwrite each other\n\nIf you edit the same note offline on two devices, the app now keeps both versions and asks which one to keep.\n\nThe fix is in version 4.2.1 for iOS and Android.\n'],
+]
+const sleep = (ms) => new Promise((done) => setTimeout(done, ms))
+const say = (event) => process.stdout.write(`${JSON.stringify(event)}\n`)
+let prompt = ''
+process.stdin.on('data', (chunk) => (prompt += chunk))
+process.stdin.on('end', async () => {
+  const note = (NOTES.find(([test]) => test.test(prompt)) ?? NOTES[0])[1]
+  const pace = Number(process.env.REEL_PACE ?? 1)
+  say({ type: 'system', subtype: 'init', model: id })
+  let n = 0
+  const tool = async (name, input, result, ms) => {
+    n += 1
+    say({ type: 'assistant', message: { content: [{ type: 'tool_use', id: `t${n}`, name, input }] } })
+    await sleep(ms * pace)
+    say({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: `t${n}`, content: result }] } })
+  }
+  const jitter = 300 + Math.random() * 900
+  await sleep(jitter * pace)
+  await tool('Read', { file_path: '.agents/skills/release-notes/SKILL.md' }, 'name: release-notes', 500)
+  await tool('Read', { file_path: 'prompt.md' }, prompt.slice(0, 80), 400)
+  mkdirSync('outputs', { recursive: true })
+  writeFileSync('outputs/output.md', note)
+  await tool('Write', { file_path: 'outputs/output.md' }, 'File created', 700 + Math.random() * 600)
+  const text = 'Wrote the release note to `outputs/output.md`.'
+  say({ type: 'assistant', message: { content: [{ type: 'text', text }] } })
+  say({
+    type: 'result', subtype: 'success', result: text,
+    total_cost_usd: model === 'haiku' ? 0.0034 : 0.0412 + Math.random() * 0.004,
+    usage: { input_tokens: 81200, output_tokens: 1180 },
+  })
+})

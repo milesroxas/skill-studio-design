@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="kit.css">
+</head>
+<body>
+<div class="stage"><div class="wipe"></div></div>
+<script type="module">
+// The film's one transition, at every cut between scenes: a full sheet of lime
+// comes up from the foot of the frame on a hard-stop ease, holds for three
+// frames while the scenes swap under it, and goes up off the head of the frame.
+// The opening's lime and the close's do the same moves on their own pages.
+import { CUTS, WIPE } from './wipes.js'
+import { mech, span } from './kit.js'
+
+const sheet = document.querySelector('.wipe')
+window.film = {
+  duration: CUTS.at(-1) + WIPE.off + WIPE.go + 0.1,
+  frame(t) {
+    let top = 1
+    let bottom = 0
+    for (const c of CUTS) {
+      if (t < c - WIPE.up || t > c + WIPE.off + WIPE.go) continue
+      top = 1 - mech(span(t, c - WIPE.up, c))
+      bottom = mech(span(t, c + WIPE.off, c + WIPE.off + WIPE.go))
+    }
+    sheet.style.clipPath = `inset(${top * 100}% 0 ${bottom * 100}% 0)`
+  },
+}
+</script>
+</body>
+</html>

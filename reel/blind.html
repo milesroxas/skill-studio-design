@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="kit.css">
+</head>
+<body>
+<div class="stage">
+<div class="ring" data-x="799" data-y="55" data-w="50" data-h="34" data-in="2.95" data-out="4.2"></div>
+<div class="pill" data-dir="down" data-tail="236" data-x="824" data-y="92" data-in="3.05" data-out="4.2">The judge said <b>71</b></div>
+</div>
+<script type="module">
+import { shot } from './kit.js'
+import data from './shots/blind.js'
+
+window.film = shot({ data, video: 'assets/blind.mp4', lead: 0.55, tail: 0.35 })
+</script>
+</body>
+</html>

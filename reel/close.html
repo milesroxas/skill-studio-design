@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="kit.css">
+<style>
+  .sheet { position: absolute; inset: 0; transform-origin: 50% 50%; }
+  .brand { top: 300px; }
+  .line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 548px;
+    margin: 0;
+    overflow: hidden;
+    padding: 8px 0;
+    text-align: center;
+    font: 560 56px/1.1 var(--sans);
+    letter-spacing: -0.035em;
+  }
+  .line span { display: inline-block; }
+  .addr { top: 712px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="panel">
+    <div class="sheet">
+      <div class="brand"><div class="word"><span>Skill Studio</span></div></div>
+      <p class="line"><span>Write agent skills. Prove they work.</span></p>
+      <p class="addr"></p>
+    </div>
+  </div>
+</div>
+<script type="module">
+// The close: the lime comes up as every wipe does and holds the name, the line,
+// and where to get it. The address is mono and lower case, and settles out of
+// noise left to right, so it reads as soon as each letter lands.
+import { ADDRESS, glyph } from './close-board.js'
+import { fonts, mark, mech, snap, span } from './kit.js'
+import { WIPE } from './wipes.js'
+
+const panel = document.querySelector('.panel')
+const brand = document.querySelector('.brand')
+const logo = mark(150)
+brand.prepend(logo)
+const ribbons = [...logo.querySelectorAll('path')]
+const word = document.querySelector('.word span')
+const line = document.querySelector('.line span')
+const addr = document.querySelector('.addr')
+const cells = [...ADDRESS.text].map(() => {
+  const c = document.createElement('span')
+  addr.append(c)
+  return c
+})
+
+window.film = {
+  duration: 6.4,
+  ready: fonts(),
+  frame(t) {
+    panel.style.clipPath = `inset(${(1 - mech(span(t, 0, WIPE.up))) * 100}% 0 0 0)`
+    ribbons.forEach((r, i) => {
+      const k = snap(span(t, 0.34 + i * 0.08, 0.58 + i * 0.08))
+      r.style.transform = `translateX(${(1 - k) * -60}px)`
+      r.style.opacity = k > 0 ? 1 : 0
+    })
+    word.style.transform = `translateY(${(1 - snap(span(t, 0.46, 0.74))) * 110}%)`
+    line.style.transform = `translateY(${(1 - snap(span(t, 0.74, 1.0))) * 115}%)`
+    cells.forEach((c, i) => {
+      const g = glyph(i, t)
+      c.textContent = g.ch
+      c.className = g.settled ? '' : 'n'
+    })
+  },
+}
+</script>
+</body>
+</html>

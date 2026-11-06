@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="kit.css">
+<style>
+  .brand { top: 398px; }
+  .tag {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 640px;
+    margin: 0;
+    text-align: center;
+    font: 500 34px/1 var(--mono);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    overflow: hidden;
+  }
+  .tag span { display: inline-block; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="board"></div>
+  <div class="panel">
+    <div class="brand"><div class="word"><span>Skill Studio</span></div></div>
+    <p class="tag"><span>Write it. Run it. Prove it.</span></p>
+  </div>
+</div>
+<script type="module">
+// The opening: a claim on the board and a doubt flapped in after it. Then the
+// lime comes up as every wipe does, holds the name, and goes up off it to the
+// first feature, on the same times as every other cut.
+import { mount, plan } from './flap.js'
+import { fonts, mark, mech, snap, span } from './kit.js'
+import { OPEN } from './open-board.js'
+import { WIPE } from './wipes.js'
+
+const UP = 2.2 // The lime is fully up here,
+const CUT = 4 // and the first feature is cut in under it here.
+const board = document.querySelector('.board')
+Object.assign(board.style, { left: `${OPEN.x}px`, top: `${OPEN.y}px` })
+const render = mount(board, OPEN.rows, plan(OPEN.rows, OPEN.seed))
+const panel = document.querySelector('.panel')
+const brand = document.querySelector('.brand')
+const logo = mark(150)
+brand.prepend(logo)
+const ribbons = [...logo.querySelectorAll('path')]
+const word = document.querySelector('.word span')
+const tag = document.querySelector('.tag span')
+
+window.film = {
+  duration: CUT + WIPE.off + WIPE.go + 0.05,
+  ready: fonts(),
+  frame(t) {
+    render(t)
+    board.style.visibility = t < UP ? 'visible' : 'hidden'
+    const up = mech(span(t, UP - WIPE.up, UP))
+    const off = mech(span(t, CUT + WIPE.off, CUT + WIPE.off + WIPE.go))
+    panel.style.clipPath = `inset(${(1 - up) * 100}% 0 ${off * 100}% 0)`
+    // The two ribbons slide in one after the other, then the name, then the line under it.
+    ribbons.forEach((r, i) => {
+      const k = snap(span(t, UP - 0.1 + i * 0.08, UP + 0.14 + i * 0.08))
+      r.style.transform = `translateX(${(1 - k) * -60}px)`
+      r.style.opacity = k > 0 ? 1 : 0
+    })
+    word.style.transform = `translateY(${(1 - snap(span(t, UP + 0.04, UP + 0.32))) * 110}%)`
+    tag.style.transform = `translateY(${(1 - snap(span(t, UP + 0.26, UP + 0.5))) * 110}%)`
+  },
+}
+</script>
+</body>
+</html>

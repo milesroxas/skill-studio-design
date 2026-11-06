@@ -1,0 +1,30 @@
+# OS and editors
+.DS_Store
+.vscode/
+.idea/
+
+# Dependencies
+node_modules/
+
+# Renders and exports
+*.mp4
+*.mov
+*.webm
+*.wav
+*.mp3
+*.m4a
+exports/
+renders/
+
+# Reel: generated sound and filmed clips (rebuilt by recorder/build.mjs)
+reel/assets/
+
+# Recorder: footage, review frames and scratch output
+recorder/out/
+recorder/old/
+recorder/review/
+recorder/explore/
+recorder/stubtest/
+
+# Elyx: fetched dependencies (commit elyx.lock)
+elyx_deps/
