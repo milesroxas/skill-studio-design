@@ -109,8 +109,8 @@ export function shot({ data, video: src, lead = 0, tail = 0 }) {
   const plan = el('div', 'plan', frame)
   blocks(data.plan.blocks, plan)
   const a = data.plan.active
+  const name = a ? el('div', 'nav-name', plan) : null
   if (a) {
-    const name = el('div', 'nav-name', plan)
     name.textContent = a.name
     const size = parseFloat(/(\d+(?:\.\d+)?)px/.exec(a.font)?.[1] ?? 13)
     Object.assign(name.style, { left: `${a.x}px`, top: `${a.y}px`, height: `${a.h}px`, fontSize: `${size}px`, lineHeight: `${a.h}px`, fontWeight: /^(\d{3})/.exec(a.font)?.[1] ?? 500 })
@@ -121,7 +121,13 @@ export function shot({ data, video: src, lead = 0, tail = 0 }) {
   const video = el('video', '', content)
   Object.assign(video, { src, muted: true, playsInline: true, preload: 'auto' })
   for (const ring of document.querySelectorAll('.ring')) content.append(ring)
-  const build = data.lift ? liftUp(data.lift, content) : data.diff ? diffUp(data.diff, content, data.diffAt) : null
+  const build = data.lift
+    ? liftUp(data.lift, content, data.liftUntil ?? Infinity)
+    : data.diff
+      ? diffUp(data.diff, content, data.diffAt)
+      : data.swap
+        ? swapUp(data.swap, content, data.swapAt)
+        : null
 
   const moves = data.events.filter((e) => e.kind === 'move')
   const start = data.events.find((e) => e.name === 'begin')
@@ -182,6 +188,29 @@ export function shot({ data, video: src, lead = 0, tail = 0 }) {
     return now
   }
 
+  /**
+   * Where a part of the app is in the plan (`home`, as the window stands after
+   * `settle`), and where it comes to rest lifted off it: near the middle, drawn a
+   * little toward where it came from (`pull`; 0 rests it dead centre), `most`
+   * times the app's size, taking `big` room.
+   */
+  const restOf = (part, settle = 0) => {
+    const home = {
+      x: WINDOW.x + 708 + (part.x + part.w / 2 - 600) * K * (1 + settle * 0.05),
+      y: WINDOW.y + 442 + (part.y + part.h / 2 - 375) * K * (1 + settle * 0.05),
+    }
+    const most = Math.min(HERO.w / part.w, HERO.h / part.h, HERO.most)
+    const pull = data.pull ?? 0.18
+    const big = { w: part.w * most, h: part.h * most }
+    const rest = {
+      x: clamp(lerp(HERO.x, home.x, pull), 80 + big.w / 2, 1840 - big.w / 2),
+      y: clamp(lerp(HERO.y, home.y, pull), 70 + big.h / 2, 1010 - big.h / 2),
+    }
+    return { home, most, big, rest }
+  }
+  /** Whether any part comes to rest over the sidebar's name; known once the fonts are in. */
+  let covers = null
+
   const seek = (tau) =>
     new Promise((done) => {
       // The middle of a frame of the 30 fps footage, so a seek never lands on an edge.
@@ -212,19 +241,19 @@ export function shot({ data, video: src, lead = 0, tail = 0 }) {
       frame.style.transform = `scale(${1 + settle * 0.05})`
       plan.style.opacity = lerp(1, 0.42, lift)
 
-      const home = {
-        x: WINDOW.x + 708 + (part.x + part.w / 2 - 600) * K * (1 + settle * 0.05),
-        y: WINDOW.y + 442 + (part.y + part.h / 2 - 375) * K * (1 + settle * 0.05),
-      }
-      const most = Math.min(HERO.w / part.w, HERO.h / part.h, HERO.most)
+      const { home, most, rest } = restOf(part, settle)
       const scale = Math.exp(lerp(Math.log(K), Math.log(most), lift))
       const w = part.w * scale
       const h = part.h * scale
-      // It rests near the middle, drawn a little toward where it came from.
-      const big = { w: part.w * most, h: part.h * most }
-      const rest = {
-        x: clamp(lerp(HERO.x, home.x, 0.18), 80 + big.w / 2, 1840 - big.w / 2),
-        y: clamp(lerp(HERO.y, home.y, 0.18), 70 + big.h / 2, 1010 - big.h / 2),
+      // The sidebar's name goes as a part comes to rest over it, so no edge of the part cuts a word.
+      if (name) {
+        covers ??= data.focus.some((f) => {
+          const r = restOf(f)
+          const x = WINDOW.x + a.x * K
+          const y = WINDOW.y + a.y * K
+          return x < r.rest.x + r.big.w / 2 && x + name.offsetWidth * K > r.rest.x - r.big.w / 2 && y < r.rest.y + r.big.h / 2 && y + a.h * K > r.rest.y - r.big.h / 2
+        })
+        name.style.opacity = covers ? 1 - lift : 1
       }
       const left = lerp(home.x, rest.x, lift) - w / 2
       const top = lerp(home.y, rest.y, lift) - h / 2
@@ -262,8 +291,12 @@ export function shot({ data, video: src, lead = 0, tail = 0 }) {
         node.style.setProperty('--d', age < 0 ? 0 : (1 - span(age, 0, 0.22)) * 0.5)
       })
       cursor.style.transform = `translate(${px - 6}px, ${py - 4}px) scale(${1.12 - press * 0.16})`
-      // Off the part, the pointer is on the dimmed plan: it dims with it.
-      cursor.style.opacity = span(u, 0.1, 0.4) * lerp(0.2, 1, near)
+      // Off the part, the pointer is on the dimmed plan: it dims with it. Once its
+      // work is done it can leave, so it never stands over what the shot ends on.
+      // With nothing to do yet it can wait off screen (`cursorIn`).
+      const come = data.cursorIn ? span(u, data.cursorIn[0], data.cursorIn[1]) : span(u, 0.1, 0.4)
+      const gone = data.cursorOut ? 1 - span(u, data.cursorOut[0], data.cursorOut[1]) : 1
+      cursor.style.opacity = come * lerp(0.2, 1, near) * gone
 
       // Notes and rings come and go on their own times, anchored in the app.
       for (const pill of pills) {
@@ -303,19 +336,30 @@ export function shot({ data, video: src, lead = 0, tail = 0 }) {
 }
 
 /**
- * The version lift on Results, built up in the order it is read: the rule under
- * it draws, the words rise in, the score counts up from the first version's mean
- * to the latest, and the ribbon is drawn left to right, from v0's level up to v1's.
- * `lift` is the figure as the app drew it, element by element; it stands over the
- * footage's own figure, in the app's coordinates. Returns render(u).
+ * The version lift on Results, built up in the order it is read: the words rise
+ * in, the score counts up from the first version's mean to the latest, and the
+ * ribbon is drawn left to right, from v0's level up to v1's. `lift` is the figure
+ * as the app drew it, element by element; it stands over the footage's own
+ * figure, in the app's coordinates, until `until`: by then the camera has cut
+ * away and the footage has scrolled out from under it. The rule under the figure
+ * is left out: the camera frames the figure's content, and the rule lies below it.
+ * Returns render(u).
  */
-function liftUp(lift, parent) {
+function liftUp(lift, parent, until) {
   const layer = el('div', 'lift', parent)
   const f = lift.figure
   const patch = el('div', 'lift-ground', layer)
-  Object.assign(patch.style, { left: `${f.x - 4}px`, top: `${f.y - 4}px`, width: `${f.w + 8}px`, height: `${f.h + 6}px` })
-  const rule = el('div', 'lift-rule', layer)
-  Object.assign(rule.style, { left: `${lift.rule.x}px`, top: `${lift.rule.y}px`, width: `${lift.rule.w}px`, height: `${lift.rule.h}px`, background: lift.rule.color })
+  // It covers the figure and all the camera frames round it (`lift.frame`), so no
+  // edge of the app's own layout shows at the card's edge. Its fill is the page's
+  // ground as the footage shows it (`lift.ground`): the video's colours come out a
+  // shade apart from the app's own in CSS.
+  const fr = lift.frame ?? f
+  const x0 = Math.min(f.x - 4, fr.x - 2)
+  const y0 = Math.min(f.y - 4, fr.y - 2)
+  const x1 = Math.max(f.x + f.w + 4, fr.x + fr.w + 2)
+  const y1 = Math.max(f.y + f.h + 2, fr.y + fr.h + 2)
+  Object.assign(patch.style, { left: `${x0}px`, top: `${y0}px`, width: `${x1 - x0}px`, height: `${y1 - y0}px` })
+  if (lift.ground) patch.style.background = lift.ground
   const r = lift.ribbon
   const band = el('div', 'lift-band', layer)
   Object.assign(band.style, { left: `${r.x}px`, top: `${r.y - 8}px`, width: `${r.w + 8}px`, height: `${r.h + 24}px` })
@@ -348,7 +392,7 @@ function liftUp(lift, parent) {
   const from = Number(first?.text ?? 0)
 
   return (u) => {
-    rule.style.transform = `scaleX(${mech(span(u, 0.02, 0.6))})`
+    layer.style.visibility = u < until ? 'visible' : 'hidden'
     // The ribbon is drawn left to right with what stands in it.
     const k = mech(span(u, 0.32, 1.18))
     band.style.clipPath = `inset(-20px ${(1 - k) * 100}% -20px -20px)`
@@ -364,7 +408,7 @@ function liftUp(lift, parent) {
 }
 
 /**
- * The word diff on Compare, set line by line into an empty panel. When Word diff
+ * The word diff on Results, set line by line into an empty panel. When Word diff
  * is pressed the panel is empty; then each line rises in, a beat after the one
  * above, with the words both versions share and the words v1 dropped. A moment
  * later the changes are marked along the line, left to right: a dropped word
@@ -377,8 +421,8 @@ function diffUp(diff, parent, { on, start, step, rise, mark, across }) {
   const layer = el('div', 'lift', parent)
   const b = diff.box
   const patch = el('div', 'lift-ground', layer)
-  // The diff sits on the card's fill, as the footage shows it (#181a1a), not the page's.
-  Object.assign(patch.style, { left: `${b.x - 6}px`, top: `${b.y}px`, width: `${b.w + 12}px`, height: `${b.h}px`, background: '#181a1a' })
+  // The diff sits on the fill of the box around it, as the app drew it, not the page's.
+  Object.assign(patch.style, { left: `${b.x - 6}px`, top: `${b.y}px`, width: `${b.w + 12}px`, height: `${b.h}px`, background: diff.ground })
   const plain = diff.pieces.find((p) => p.kind === 'same')?.color ?? 'var(--paper)'
   const tops = [...new Set(diff.pieces.map((p) => Math.round(p.y)))].sort((a, c) => a - c)
   const lines = tops.map((y, i) => {
@@ -428,6 +472,72 @@ function diffUp(diff, parent, { on, start, step, rise, mark, across }) {
       }
     }
   }
+}
+
+/**
+ * A rule replaced in the editor. The footage already shows the new rule; over it
+ * the old one stands until `start`. Then a strike is drawn through it, its words
+ * leave upward one after another, and the new words rise in, a beat apart, onto
+ * the same line. `swap` holds both rules as the app drew them, one piece per
+ * line on screen, and the editor's ground. Nothing shows before `on`, while
+ * the footage still has the popout over the line. Returns render(u).
+ */
+function swapUp(swap, parent, { on, start }) {
+  const layer = el('div', 'lift swap', parent)
+  const all = [...swap.old.pieces, ...swap.new.pieces]
+  const x0 = Math.min(...all.map((p) => p.x))
+  const y0 = Math.min(...all.map((p) => p.y))
+  const x1 = Math.max(...all.map((p) => p.x + p.w))
+  const y1 = Math.max(...all.map((p) => p.y + p.h))
+  const patch = el('div', 'lift-ground', layer)
+  // Wide enough to cover the caret at the end of the new rule too. Its fill is
+  // the editor's ground as the footage shows it (`swap.ground`): the video's
+  // colours come out a shade apart from the app's own in CSS. Soft edges hide the rest.
+  Object.assign(patch.style, { left: `${x0 - 5}px`, top: `${y0 - 2}px`, width: `${x1 - x0 + 16}px`, height: `${y1 - y0 + 4}px`, background: swap.ground })
+  let order = 0
+  const words = (pieces, kind) =>
+    pieces.flatMap((p) => {
+      const row = el('div', 'swap-row', layer)
+      Object.assign(row.style, { left: `${p.x}px`, top: `${p.y}px`, height: `${p.h}px`, font: `${p.weight} ${p.size}px/${p.h}px ${p.mono ? 'var(--mono)' : 'var(--sans)'}`, color: p.color, letterSpacing: p.spacing === 'normal' ? '0' : p.spacing })
+      // One strike per line on screen, drawn from the first piece on it across the others.
+      const same = pieces.filter((o) => Math.round(o.y) === Math.round(p.y))
+      const strike = kind === 'old' && same[0] === p ? el('div', 'swap-strike', layer) : null
+      const end = Math.max(...same.map((o) => o.x + o.w))
+      if (strike) Object.assign(strike.style, { left: `${p.x}px`, top: `${p.y + p.h * 0.56}px`, width: `${end - p.x}px`, background: p.color })
+      const list = (p.text.match(/\s*\S+/g) ?? []).map((word) => {
+        const mask = el('span', 'swap-word', row)
+        const inner = el('span', '', mask)
+        inner.textContent = word
+        return { inner, i: order++ }
+      })
+      return [{ row, strike, list }]
+    })
+  const before = words(swap.old.pieces, 'old')
+  order = 0
+  const after = words(swap.new.pieces, 'new')
+
+  const render = (u) => {
+    layer.style.visibility = u >= on ? 'visible' : 'hidden'
+    const struck = mech(span(u, start, start + 0.32))
+    for (const { row, strike, list } of before) {
+      if (strike) {
+        strike.style.transform = `scaleX(${struck})`
+        strike.style.opacity = 1 - span(u, start + 0.36, start + 0.5)
+      }
+      row.style.opacity = lerp(1, 0.5, struck)
+      for (const w of list) {
+        const k = mech(span(u, start + 0.36 + w.i * 0.02, start + 0.56 + w.i * 0.02))
+        w.inner.style.transform = `translateY(${-k * 105}%)`
+      }
+    }
+    for (const { list } of after) {
+      for (const w of list) {
+        const k = snap(span(u, start + 0.66 + w.i * 0.035, start + 0.94 + w.i * 0.035))
+        w.inner.style.transform = `translateY(${(1 - k) * 105}%)`
+      }
+    }
+  }
+  return render
 }
 
 /** The mark, as an SVG that pages animate stroke by stroke. */

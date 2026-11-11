@@ -1,0 +1,18 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="kit.css">
+</head>
+<body>
+<div class="stage">
+<div class="ring" data-x="506" data-y="610" data-w="345" data-h="30" data-in="2.25" data-out="9"></div>
+</div>
+<script type="module">
+import { shot } from './kit.js'
+import data from './shots/write.js'
+
+window.film = shot({ data, video: 'assets/write.mp4', intro: 0.55, outro: 0.8 })
+</script>
+</body>
+</html>

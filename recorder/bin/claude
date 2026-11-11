@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 // Stand-in for the `claude` CLI while the reel is filmed: prints the stream-json a
 // real session prints and writes a release note, so a run costs nothing.
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 const args = process.argv.slice(2)
+// The recorder checks this log to know the stand-in ran, not the real claude.
+if (process.env.REEL_STUB_LOG) appendFileSync(process.env.REEL_STUB_LOG, `${args.join(' ')}\n`)
 const model = args.includes('--model') ? args[args.indexOf('--model') + 1] : 'sonnet'
 const id = model === 'haiku' ? 'claude-haiku-5-5' : 'claude-sonnet-5-5'
 const NOTES = [
@@ -10,12 +13,64 @@ const NOTES = [
   [/reports/i, '# /v1/reports is removed on 1 March 2027\n\nFrom 1 March 2027 the API no longer answers `/v1/reports`. Calls to it will fail, so move to `/v3/reports` before then.\n\n`/v3/reports` returns the same fields and adds `generated_at`. Nothing else in the API changes.\n\nFind the endpoint under Reports in the API reference.\n'],
   [/offline/i, '# Offline edits no longer overwrite each other\n\nIf you edit the same note offline on two devices, the app now keeps both versions and asks which one to keep.\n\nThe fix is in version 4.2.1 for iOS and Android.\n'],
 ]
+// The walkthrough's thank-you notes: [request, note under the vague rule, note under the exact one].
+// The vague "reasonable length" rule gets four sentences; "exactly two sentences" gets two.
+const THANKS = [
+  [/Priya/, 'Priya, thank you so much for covering my on-call shift on Saturday. I know giving up a weekend is a lot to ask. Because you stepped in, I could be at my sister’s wedding without checking my phone once. I owe you one.', 'Priya, thank you for covering my on-call shift on Saturday. It let me be at my sister’s wedding.'],
+  [/Marcus/, 'Marcus, thank you for reviewing my 40-page proposal overnight. I know that was a lot to take on at short notice. Your notes made the argument sharper in places I had stopped seeing. Because of you, it reached the client on time on Friday.', 'Marcus, thank you for reviewing my 40-page proposal overnight. It reached the client on time on Friday.'],
+  [/Elena/, 'Elena, thank you so much for introducing me to the hiring manager at Northwind. I would never have found that door on my own. The conversation you set up turned into an offer. I start there next month, and I owe it to you.', 'Elena, thank you for introducing me to the hiring manager at Northwind. I start there next month.'],
+]
+/** The installed skill's SKILL.md under the run's folder, if any, and its name. */
+function installedSkill(dir = '.', depth = 0) {
+  if (depth > 4) return null
+  let entries = []
+  try { entries = readdirSync(dir, { withFileTypes: true }) } catch { return null }
+  for (const e of entries) if (e.isFile() && e.name === 'SKILL.md') return join(dir, e.name)
+  for (const e of entries) {
+    if (!e.isDirectory() || e.name === 'node_modules' || e.name === 'outputs') continue
+    const found = installedSkill(join(dir, e.name), depth + 1)
+    if (found) return found
+  }
+  return null
+}
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms))
 const say = (event) => process.stdout.write(`${JSON.stringify(event)}\n`)
+
+// Signed in, as the app asks before it offers Claude Code as the assistant's model.
+if (args[0] === 'auth') {
+  say({ loggedIn: true, email: 'you@example.com', authMethod: 'claude.ai', subscriptionType: 'max' })
+  process.exit(0)
+}
+
+// The editor's Suggest changes: three rewrites of the weak rule the reel selects,
+// returned the way the CLI returns a reply shaped by --json-schema.
+const REWRITES = {
+  practice: 'Keep each paragraph to two sentences or fewer. A reader skims a release note.',
+  direct: 'Keep every paragraph to two sentences or fewer; readers skim release notes.',
+  shorter: 'Two sentences per paragraph at most: readers skim.',
+}
+if (args.includes('--json-schema')) {
+  process.stdin.resume()
+  process.stdin.on('end', async () => {
+    const pace = Number(process.env.REEL_PACE ?? 1)
+    say({ type: 'system', subtype: 'init', model: 'claude-sonnet-5-5' })
+    const json = JSON.stringify(REWRITES)
+    for (let i = 0; i < json.length; i += 24) {
+      await sleep(40 * pace)
+      say({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'input_json_delta', partial_json: json.slice(i, i + 24) } } })
+    }
+    say({ type: 'result', subtype: 'success', is_error: false, result: '', structured_output: REWRITES, usage: { input_tokens: 2100, output_tokens: 90 } })
+  })
+} else {
 let prompt = ''
 process.stdin.on('data', (chunk) => (prompt += chunk))
 process.stdin.on('end', async () => {
-  const note = (NOTES.find(([test]) => test.test(prompt)) ?? NOTES[0])[1]
+  const thanks = THANKS.find(([test]) => test.test(prompt))
+  const skillPath = installedSkill()
+  const skillText = skillPath && existsSync(skillPath) ? readFileSync(skillPath, 'utf8') : ''
+  const note = thanks
+    ? `${skillText.includes('exactly two sentences') ? thanks[2] : thanks[1]}\n`
+    : (NOTES.find(([test]) => test.test(prompt)) ?? NOTES[0])[1]
   const pace = Number(process.env.REEL_PACE ?? 1)
   say({ type: 'system', subtype: 'init', model: id })
   let n = 0
@@ -27,12 +82,12 @@ process.stdin.on('end', async () => {
   }
   const jitter = 300 + Math.random() * 900
   await sleep(jitter * pace)
-  await tool('Read', { file_path: '.agents/skills/release-notes/SKILL.md' }, 'name: release-notes', 500)
+  await tool('Read', { file_path: skillPath ?? '.agents/skills/release-notes/SKILL.md' }, skillText.slice(0, 80) || 'name: release-notes', 500)
   await tool('Read', { file_path: 'prompt.md' }, prompt.slice(0, 80), 400)
   mkdirSync('outputs', { recursive: true })
   writeFileSync('outputs/output.md', note)
   await tool('Write', { file_path: 'outputs/output.md' }, 'File created', 700 + Math.random() * 600)
-  const text = 'Wrote the release note to `outputs/output.md`.'
+  const text = thanks ? 'Wrote the note to `outputs/output.md`.' : 'Wrote the release note to `outputs/output.md`.'
   say({ type: 'assistant', message: { content: [{ type: 'text', text }] } })
   say({
     type: 'result', subtype: 'success', result: text,
@@ -40,3 +95,4 @@ process.stdin.on('end', async () => {
     usage: { input_tokens: 81200, output_tokens: 1180 },
   })
 })
+}

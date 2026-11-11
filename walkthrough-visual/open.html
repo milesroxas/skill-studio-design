@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="kit.css">
+</head>
+<body>
+<div class="stage">
+  <div class="title-card">
+    <div class="logo"></div>
+  </div>
+</div>
+<script type="module">
+import { card } from './card.js'
+
+window.film = card({ duration: 2.25, out: false, size: 200 })
+</script>
+</body>
+</html>

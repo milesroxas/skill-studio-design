@@ -1,0 +1,118 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="kit.css">
+</head>
+<body>
+<div class="stage">
+  <div class="window" id="window">
+    <video id="take" src="assets/welcome.mp4" muted playsinline preload="auto"></video>
+    <!-- macOS draws its window buttons over the welcome's top strip; the take cannot see them. -->
+    <div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="cursor" id="cursor"><svg viewBox="0 0 34 42" width="34" height="42"><path d="M6 4v27.5l6.9-6.3 4.6 10.9 5-2.1-4.6-10.7H27z" fill="#141615" stroke="#f4f2eb" stroke-width="2.2" stroke-linejoin="round"/></svg></div>
+  </div>
+</div>
+<script type="module">
+// The welcome window, filmed on the app, standing on the ground with a pointer over it.
+// It comes up, plays the take through the cut in shots/welcome.js, and goes. The
+// picture depends only on t.
+import data from './shots/welcome.js'
+
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v))
+const span = (t, a, b) => clamp((t - a) / (b - a))
+const lerp = (a, b, k) => a + (b - a) * k
+const outCubic = (k) => 1 - (1 - k) ** 3
+const inCubic = (k) => k ** 3
+const inOutSine = (k) => -(Math.cos(Math.PI * k) - 1) / 2
+// The pointer's ease: the one the take was filmed with.
+const glide = (u) => u * u * u * (u * (u * 6 - 15) + 10)
+
+/** How large the window is drawn: its 760 × 600 at 1.9, in the 1920 × 1280 frame. */
+const S = 1.9
+const INTRO = 0.55
+const OUTRO = 0.6
+const L = data.length
+const DURATION = Math.round((L + OUTRO) * 1000) / 1000
+
+const win = document.getElementById('window')
+const video = document.getElementById('take')
+const cursor = document.getElementById('cursor')
+Object.assign(win.style, { width: `${data.w * S}px`, height: `${data.h * S}px` })
+
+/** A value along keyframes [[at, value], …], straight between them. */
+function along(keys, at) {
+  if (at <= keys[0][0]) return keys[0][1]
+  for (let i = 1; i < keys.length; i += 1) {
+    const [a, va] = keys[i - 1]
+    const [b, vb] = keys[i]
+    if (at <= b) return b === a ? vb : va + ((vb - va) * (at - a)) / (b - a)
+  }
+  return keys.at(-1)[1]
+}
+
+const moves = data.events.filter((e) => e.kind === 'move')
+const downs = data.events.filter((e) => e.kind === 'down')
+const ups = data.events.filter((e) => e.kind === 'up')
+const shows = moves[0].t - 0.12
+
+/** Where the pointer is at take time tau. */
+function pointer(tau) {
+  let at = data.start
+  for (const m of moves) {
+    if (tau < m.t) break
+    const k = glide(span(tau, m.t, m.t1))
+    at = { x: lerp(m.x0, m.x, k), y: lerp(m.y0, m.y, k) }
+  }
+  return at
+}
+
+/** How far in a press the pointer is at tau: 1 held down, easing back after it lets go. */
+function press(tau) {
+  let p = 0
+  for (const [i, d] of downs.entries()) {
+    const u = ups[i]?.t ?? d.t + 0.08
+    if (tau >= d.t && tau < u) p = outCubic(span(tau, d.t, d.t + 0.06))
+    else if (tau >= u) p = Math.max(p, 1 - outCubic(span(tau, u, u + 0.18)))
+  }
+  return p
+}
+
+const seek = (tau) =>
+  new Promise((done) => {
+    // The middle of a frame of the 30 fps take, so a seek never lands on an edge.
+    const at = Math.min((Math.floor(tau * 30) + 0.5) / 30, Math.max(0, video.duration - 0.02))
+    if (Math.abs(video.currentTime - at) < 1e-4 && !video.seeking && video.readyState >= 2) return done()
+    video.addEventListener('seeked', () => done(), { once: true })
+    video.currentTime = at
+  })
+
+const loaded = new Promise((done) => {
+  if (video.readyState >= 2) done()
+  else video.addEventListener('loadeddata', () => done(), { once: true })
+})
+
+window.film = {
+  duration: DURATION,
+  ready: loaded,
+  async frame(t) {
+    const tau = along(data.remap, clamp(t, 0, L))
+    await seek(tau)
+
+    // Comes up from a little below; a slow push the whole way; sinks away at the end.
+    const enter = outCubic(span(t, 0, INTRO))
+    const leave = inCubic(span(t, L, L + OUTRO))
+    const push = 1 + 0.035 * inOutSine(span(t, 0, L))
+    win.style.opacity = enter * (1 - leave)
+    win.style.translate = `0 ${(1 - enter) * 36 - leave * 20}px`
+    win.style.scale = `${push * lerp(0.985, 1, enter) * (1 - 0.015 * leave)}`
+
+    const p = pointer(tau)
+    cursor.style.opacity = span(tau, shows, shows + 0.2)
+    cursor.style.translate = `${p.x * S - 6 * 1.15}px ${p.y * S - 4 * 1.15}px`
+    cursor.style.scale = `${1.15 * (1 - 0.14 * press(tau))}`
+  },
+}
+</script>
+</body>
+</html>

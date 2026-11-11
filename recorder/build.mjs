@@ -15,82 +15,150 @@ const ONLY = process.argv[2] ?? 'pages'
 mkdirSync(join(FILM, 'assets'), { recursive: true })
 
 /**
- * 120 BPM. A 4 s opening; five features of 9 s, each a 4 s bumper then a 5 s
- * shot; the close. Every change of scene is a cut under the full lime wipe.
+ * 120 BPM. A 4 s opening; five features, each a 4 s bumper then its shot; the
+ * close. A feature's block is 9 s unless it says otherwise. Every change of
+ * scene is a cut under the full lime wipe.
  */
-const TOTAL = 55
-const BLOCKS = [4, 13, 22, 31, 40]
+const OPENING = 4
+const CLOSING = 6 // From the close's lime fully up to the film's end.
 const BUMP = 4 // A bumper's share of its block; the shot is cut in here.
-const END = 49 // The close's lime is fully up here.
 const WIPE = { up: 0.4, off: 0.1, go: 0.4 }
 const EDGE = 0.05 // Scenes overlap this much either side of a cut, under the full sheet.
 const LEAD = WIPE.off + WIPE.go + EDGE // A shot's own zero comes once the wipe is off it,
-const SHOT = 4.2 // and it runs this long before the next wipe covers it.
-const CLOSE_AT = END - WIPE.up
+const shotOf = (f) => (f.block ?? 9) - BUMP - LEAD - 0.25 // and it runs this long before the next wipe covers it.
 
-/** The cuts the wipe layer makes. The opening and the close make their own. */
-const CUTS = BLOCKS.flatMap((b, i) => (i ? [b, b + BUMP] : [b + BUMP]))
-
-/** The five features: what the bumper says, and what the shot shows. Boxes are in the app's 1200 × 750. */
+/**
+ * The five features, in the order of the app's loop (write, run, compare): what
+ * the bumper says, and what the shot shows. A focus entry names a box the
+ * recorder measured on the screen as it was at that moment (record.ts frame()),
+ * grown so no line of text or control is cut; `t` is when the camera moves to
+ * it, in shot time, and `cut` swaps rather than slides. A slide between boxes of
+ * different shapes crops lines on its way, so a change of shape is a cut.
+ */
 const FEATURES = [
   {
     name: 'write',
-    head: [{ text: 'WRITE THE RULES.', tones: [[10, 16, 'key']] }],
-    why: 'EACH ONE SAYS WHY.',
-    // Typing runs 1:1, so each key's sound lands on its letter. After Save, the bar holds.
-    remap: [[0, 0.95], [2.71, 3.66], [3.25, 4.5], [3.4, 4.65], [4.2, 5.45]],
-    // The bar's box is centred on what is in it: SKILL.md at 516 to Save's last letter at 1153, the controls 56 to 88.
-    focus: [{ x: 500, y: 200, w: 690, h: 372 }, { t: 2.75, dur: 0.45, cut: true, x: 496, y: 49.5, w: 677, h: 45 }],
+    block: 11,
+    head: [{ text: 'WRITE BETTER SKILLS.', tones: [[6, 12, 'key']] }],
+    why: 'AI TOOLS THAT SHARPEN EVERY RULE.',
+    // It opens on the three rewrites Suggest changes gave for the selected rule;
+    // Best practice is picked (down2), and the camera moves down onto the editor,
+    // where the old rule gives way to the new one (kit.js swapUp), then holds.
+    // Footage times are tied to the press, so a re-film keeps the pacing. Right
+    // after the press the app shows the checks popout again for a frame as it
+    // closes, and the caret blinks at the rule's end: the footage jumps to a
+    // clean frame and holds it.
+    remap: [[0, 'down2-2.3'], [2.3, 'down2'], [2.36, 'down2+0.06'], [2.38, 'down2+0.7'], [6.2, 'down2+0.7']],
+    focus: [{ box: 'rewrites' }, { t: 2.55, dur: 0.8, box: 'better' }],
+    // ground: the editor's fill as the film draws the footage, read off an unencoded frame (look).
+    swap: { on: 2.37, start: 3.55, ground: 'rgb(13, 15, 19)' },
+    cursorOut: [2.45, 2.75],
     notes: '',
   },
   {
     name: 'run',
     head: [{ text: 'RUN REAL AGENTS.', tones: [[9, 16, 'key']] }],
     why: 'CLAUDE CODE AND CURSOR DO THE WORK.',
-    remap: [[0, 0.4], [0.3, 0.7], [1.34, 1.74], [1.9, 2.42], [2.25, 2.71], [2.7, 3.1], [2.8, 4.3], [4.2, 6.4]],
-    focus: [
-      { x: 470, y: 64, w: 720, h: 118 },
-      { t: 1.45, dur: 0.45, cut: true, x: 470, y: 672, w: 720, h: 76 },
-      { t: 2.5, dur: 0.5, cut: true, x: 240, y: 578, w: 940, h: 172 },
-    ],
+    // Run opens its panel; the run is named, keys 1:1, and started. Then the
+    // new version joins the list under the files.
+    // The wait for the run is quickened, so v2 joins the list on camera, then holds.
+    // down0 Run, down1 the name field, down2 Start a run.
+    remap: [[0, 'down0-0.4'], [0.5, 'down0+0.1'], [0.8, 'down1-0.15'], [2.1, 'down1+1.15'], [2.4, 'down2-0.17'], [2.7, 'down2+0.13'], [3.3, 'down2+1.73'], [4.2, 'down2+2.73']],
+    focus: [{ box: 'panel' }, { t: 2.65, dur: 0.45, cut: true, box: 'versions' }],
     notes: '',
   },
   {
     name: 'results',
-    head: [{ text: 'SCORE EVERY ANSWER.', tones: [[12, 19, 'key']] }],
-    why: 'ONE SCALE, SO VERSIONS COMPARE.',
-    // The lift builds up (kit.js), then the list of runs; a run opens and the camera moves in on it.
-    remap: [[0, 0], [1.5, 1.15], [1.95, 1.6], [2.5, 2.45], [4.2, 4.15]],
-    focus: [
-      { x: 240, y: 62, w: 940, h: 150 },
-      { t: 1.5, dur: 0.45, cut: true, x: 190, y: 236, w: 1000, h: 312 },
-      { t: 2.62, dur: 0.6, x: 230, y: 464, w: 946, h: 268 },
-    ],
-    lift: true,
+    head: [{ text: 'DID THE EDIT HELP?', tones: [[13, 18, 'key']] }],
+    why: 'EVERY VERSION ON ONE SCALE.',
+    // The lift builds up (kit.js), then the list of runs; a run opens and the camera moves down to it.
+    remap: [[0, 0], [1.5, 1.15], [1.95, 1.6], [2.5, 'down0+0.18'], [4.2, 'down0+1.88']],
+    focus: [{ box: 'lift' }, { t: 1.5, dur: 0.45, cut: true, box: 'rows' }, { t: 2.62, dur: 0.6, box: 'open' }],
+    // The camera frames what the figure draws, `pad` all round (liftBox), not the
+    // figure's full column: the ribbon stops well short of its right edge.
+    // ground: the page's fill as the film draws the footage, read off an unencoded frame (look).
+    lift: { pad: 32, ground: 'rgb(13, 15, 19)' },
+    // The lift is wide and the runs under it fill their column: both rest dead centre.
+    pull: 0,
+    // The pointer has nothing to do over the lift: it comes in as the camera cuts to the runs.
+    cursorIn: [1.75, 1.95],
     notes: '',
-  },
-  {
-    name: 'blind',
-    head: [{ text: 'RATE IT ??????', tones: [[8, 14, 'dim']] }, { text: 'RATE IT BLIND.', tones: [[8, 14, 'key']] }],
-    why: "YOUR CALL FIRST. THE JUDGE'S AFTER.",
-    remap: [[0, 0.45], [2.4, 3.6], [4.2, 5.4]],
-    // The output's head stops at its column's edge, 858: the box ends short of it.
-    focus: [{ x: 866, y: 60, w: 330, h: 386 }, { t: 2.5, dur: 0.5, cut: true, x: 234, y: 38, w: 620, h: 160 }],
-    notes: `<div class="ring" data-x="799" data-y="55" data-w="50" data-h="34" data-in="2.95" data-out="4.2"></div>
-<div class="pill" data-dir="down" data-tail="236" data-x="824" data-y="92" data-in="3.05" data-out="4.2">The judge said <b>71</b></div>`,
   },
   {
     name: 'compare',
     head: [{ text: 'SEE WHAT STAYED.', tones: [[9, 16, 'dim']] }, { text: 'SEE WHAT CHANGED.', tones: [[9, 17, 'key']] }],
     why: 'V0 AGAINST V1, WORD FOR WORD.',
     // Word diff is pressed: the panel empties at once and the diff is set into it
-    // line by line (kit.js). The camera holds still, so the panel keeps its size.
-    remap: [[0, 0.3], [0.5, 0.8], [0.54, 1.05], [4.2, 2.3]],
-    focus: [{ x: 240, y: 66, w: 940, h: 560 }],
+    // line by line (kit.js), as the camera moves down onto the panel.
+    remap: [[0, 'down0-0.48'], [0.5, 'down0+0.02'], [0.54, 'down0+0.27'], [4.2, 'down0+2.12']],
+    focus: [{ box: 'head' }, { t: 0.6, dur: 0.6, box: 'diff' }],
     diff: { on: 0.52, start: 0.72, step: 0.2, rise: 0.36, mark: 0.22, across: 0.3 },
     notes: '',
   },
+  {
+    name: 'pick',
+    head: [{ text: 'JEV CHECKS. YOU ?????', tones: [[16, 21, 'dim']] }, { text: 'JEV CHECKS. YOU PICK.', tones: [[16, 21, 'key']] }],
+    why: 'YOUR PICK IS THE LAST WORD.',
+    // A rule Jev called missed is marked met, and A's score follows; then B is picked.
+    // down0 Mark as met, down1 B is better.
+    remap: [[0, 'down0-0.5'], [1.7, 'down0+1.2'], [2.2, 'down1-0.1'], [4.2, 'down1+1.4']],
+    focus: [{ box: 'cards' }, { t: 1.75, dur: 0.4, cut: true, box: 'bar' }],
+    notes: '',
+  },
 ]
+
+/** Where each block starts, where the close's lime is fully up, and the film's length. */
+const BLOCKS = FEATURES.map((_, i) => OPENING + FEATURES.slice(0, i).reduce((sum, f) => sum + (f.block ?? 9), 0))
+const END = BLOCKS.at(-1) + (FEATURES.at(-1).block ?? 9)
+const TOTAL = END + CLOSING
+const CLOSE_AT = END - WIPE.up
+
+/** The cuts the wipe layer makes. The opening and the close make their own. */
+const CUTS = BLOCKS.flatMap((b, i) => (i ? [b, b + BUMP] : [b + BUMP]))
+
+/**
+ * A shot's focus with its named boxes filled in: an entry `{ box: 'name' }`
+ * takes the box the recorder measured under that name, already grown so no
+ * line of text or control crosses its edge.
+ */
+function focusOf(f, events) {
+  return f.focus.map(({ box, ...entry }) => {
+    if (!box) return entry
+    const found = events.filter((e) => e.kind === 'box' && e.name === box).at(-1)
+    if (!found) throw new Error(`${f.name}: no box named ${box} in the footage`)
+    const { x, y, w, h } = found
+    return { ...entry, x: round(x), y: round(y), w: round(w), h: round(h) }
+  })
+}
+
+/**
+ * The box round what the version lift draws: its words, and the ribbon down to
+ * the dashed line of the run without the skill, the lowest thing in it. The
+ * ribbon's own box runs on past that line, and the figure's column past the
+ * ribbon, so neither frames it evenly. `pad` is the margin on every side.
+ */
+function liftBox(lift, pad) {
+  const r = lift.ribbon
+  const floors = [...lift.svg.html.matchAll(/<line [^>]*y1="([\d.]+)"/g)].map((m) => lift.svg.y + Number(m[1]))
+  const x0 = Math.min(r.x, ...lift.texts.map((t) => t.x))
+  const y0 = Math.min(r.y, ...lift.texts.map((t) => t.y))
+  const x1 = Math.max(r.x + r.w, ...lift.texts.map((t) => t.x + t.w))
+  const y1 = Math.max(...(floors.length ? floors : [r.y + r.h]), ...lift.texts.map((t) => t.y + t.h))
+  return { x: round(x0 - pad), y: round(y0 - pad), w: round(x1 - x0 + pad * 2), h: round(y1 - y0 + pad * 2) }
+}
+
+/**
+ * A footage time in a remap: a number, or a press it is tied to, such as
+ * 'down1+0.35' (0.35 s after the second press), so pacing survives a re-film.
+ */
+function footageAt(at, events) {
+  if (typeof at === 'number') return at
+  const m = /^(down|up)(\d+)([+-][\d.]+)?$/.exec(at)
+  if (!m) throw new Error(`Not a footage time: ${at}`)
+  const hit = events.filter((e) => e.kind === m[1])[Number(m[2])]
+  if (!hit) throw new Error(`No ${m[1]} number ${m[2]} in the footage`)
+  return round(hit.t + Number(m[3] ?? 0))
+}
 
 const filmTime = (remap, tau) => {
   for (let i = 1; i < remap.length; i += 1) {
@@ -168,19 +236,48 @@ for (const [index, f] of FEATURES.entries()) {
   if (ONLY === 'all') copyFileSync(join(HERE, 'out', `${f.name}.mp4`), join(FILM, 'assets', `${f.name}.mp4`))
   const raw = JSON.parse(readFileSync(join(HERE, 'out', `${f.name}.json`), 'utf8'))
   const traced = JSON.parse(readFileSync(join(HERE, 'out', `${f.name}.plan.json`), 'utf8'))
-  const remap = f.remap
+  const remap = f.remap.map(([u, at]) => [u, footageAt(at, raw.events)])
   for (let i = 1; i < remap.length; i += 1)
     if (remap[i][1] < remap[i - 1][1] || remap[i][0] < remap[i - 1][0]) throw new Error(`${f.name}: time runs back at ${i}`)
   if (remap.at(-1)[1] > raw.length) throw new Error(`${f.name}: the footage is ${raw.length} s`)
   const events = raw.events
     .filter((e) => ['move', 'down', 'mark'].includes(e.kind))
     .map((e) => Object.fromEntries(Object.entries(e).filter(([, v]) => v !== undefined).map(([k, v]) => [k, typeof v === 'number' ? round(v) : v])))
-  const data = { length: SHOT, remap, focus: f.focus, events, plan: traced }
-  if (f.lift) data.lift = JSON.parse(readFileSync(join(HERE, 'out', `${f.name}.lift.json`), 'utf8'))
+  const SHOT = shotOf(f)
+  const data = { length: SHOT, remap, focus: focusOf(f, raw.events), events, plan: traced }
+  if (f.lift) {
+    data.lift = JSON.parse(readFileSync(join(HERE, 'out', `${f.name}.lift.json`), 'utf8'))
+    data.lift.ground = f.lift.ground
+    const at = f.focus.findIndex((x) => x.box === 'lift')
+    if (at >= 0) {
+      data.lift.frame = liftBox(data.lift, f.lift.pad)
+      data.focus[at] = { ...data.focus[at], ...data.lift.frame }
+    }
+    // The built-up figure goes when the footage is out of sight, mid way through the first cut.
+    const cut = data.focus.find((x) => x.cut)
+    if (cut) data.liftUntil = round(cut.t + cut.dur / 2)
+  }
+  if (f.swap) {
+    const read = (n) => JSON.parse(readFileSync(join(HERE, 'out', `${f.name}.${n}.json`), 'utf8'))
+    const [was, now] = [read('old'), read('new')]
+    if (!was?.pieces.length || !now?.pieces.length) throw new Error(`${f.name}: no rule traced`)
+    data.swap = { old: was, new: now, ground: f.swap.ground }
+    data.swapAt = { on: f.swap.on, start: f.swap.start }
+    // The box was measured round the new rule. The old one stands there first and
+    // can run a line longer: grow the box so it holds the old rule with the same margin.
+    const foot = (pieces) => Math.max(...pieces.map((p) => p.y + p.h))
+    for (const box of data.focus.filter((b) => b.t !== undefined && b.y < foot(now.pieces) && b.y + b.h > foot(now.pieces))) {
+      const margin = box.y + box.h - foot(now.pieces)
+      box.h = round(Math.max(box.h, foot(was.pieces) + margin - box.y))
+    }
+  }
+  if (f.cursorIn) data.cursorIn = f.cursorIn
+  if (f.cursorOut) data.cursorOut = f.cursorOut
+  if (f.pull !== undefined) data.pull = f.pull
   if (f.diff) {
     const diff = JSON.parse(readFileSync(join(HERE, 'out', `${f.name}.diff.json`), 'utf8'))
-    // Only green text is added text: a run inside some other filled box is shared text.
-    for (const p of diff.pieces) if (p.kind === 'ins' && !/ 150\)/.test(p.color)) p.kind = 'same'
+    // Only a green fill marks added text (oklab with a negative a): a run inside some other filled box is shared text.
+    for (const p of diff.pieces) if (p.kind === 'ins' && !/oklab\([\d.]+ -/.test(p.bg ?? '')) p.kind = 'same'
     data.diff = diff
     data.diffAt = f.diff
   }
@@ -192,7 +289,7 @@ for (const [index, f] of FEATURES.entries()) {
 export default ${JSON.stringify(data)}\n`,
   )
   // It ends just past the next cut, under the full sheet.
-  const tail = 9 - BUMP + EDGE * 2 - LEAD - SHOT
+  const tail = (f.block ?? 9) - BUMP + EDGE * 2 - LEAD - SHOT
   writeFileSync(
     join(FILM, `${f.name}.html`),
     `<!doctype html>

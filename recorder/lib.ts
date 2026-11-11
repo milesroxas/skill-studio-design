@@ -82,7 +82,11 @@ export function launch(
 ): Promise<{ app: ChildProcess; port: number }> {
   const electron: string = createRequire(join(ROOT, 'package.json'))('electron')
   const app = spawn(electron, [ROOT, `--user-data-dir=${profile}`, '--remote-debugging-port=0', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows', '--disable-background-timer-throttling', '--disable-features=CalculateNativeWinOcclusion,MacWebContentsOcclusion'], {
-    env: { ...process.env, SKILL_STUDIO_HOME: home, TYPESAFE_API_KEY: 'reel-placeholder', ...env },
+    // SHELL is a stand-in too: the app puts the login shell's PATH ahead of its own,
+    // which would find the real claude before the stand-in in recorder/bin.
+    // Jev is real: the app takes TYPESAFE_API_KEY from this environment, or else from
+    // the checkout's .env. Without either, the top bar shows "No Jev key".
+    env: { ...process.env, SKILL_STUDIO_HOME: home, SHELL: fileURLToPath(new URL('bin/login-shell', import.meta.url)), ...env },
     stdio: ['ignore', 'ignore', 'pipe'],
   })
   return new Promise((done, fail) => {

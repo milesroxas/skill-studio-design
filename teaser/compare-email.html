@@ -1,0 +1,18 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="kit.css">
+</head>
+<body>
+<div class="stage">
+<div class="pill" data-dir="right" data-x="390" data-y="290" data-in="2.2" data-out="9">Too casual</div>
+</div>
+<script type="module">
+import { shot } from './kit.js'
+import data from './shots/compare-email.js'
+
+window.film = shot({ data, video: 'assets/compare-email.mp4', intro: 0.55, outro: 0.8 })
+</script>
+</body>
+</html>

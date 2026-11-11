@@ -1,0 +1,56 @@
+#!/usr/bin/env node
+// Stand-in for the `claude` CLI while stills are taken (stills.ts): answers the
+// editor's Auto refine, Suggest changes and Help me improve for the weak rule,
+// so no real model runs. Runs are not answered: the seed already holds them.
+import { appendFileSync } from 'node:fs'
+const args = process.argv.slice(2)
+if (process.env.REEL_STUB_LOG) appendFileSync(process.env.REEL_STUB_LOG, `${args[0] ?? ''}\n`)
+const say = (event) => process.stdout.write(`${JSON.stringify(event)}\n`)
+const sleep = (ms) => new Promise((done) => setTimeout(done, ms))
+
+if (args[0] === 'auth') {
+  say({ loggedIn: true, authMethod: 'claude.ai', subscriptionType: 'max' })
+  process.exit(0)
+}
+
+const arg = (flag) => (args.includes(flag) ? args[args.indexOf(flag) + 1] : '')
+const schema = arg('--json-schema')
+const system = arg('--system-prompt')
+
+const REWRITES = {
+  practice: 'Always put the date in the title. A reader plans their work by it.',
+  direct: 'Always give the date when the change has one.',
+  shorter: 'Mention dates when they matter.',
+}
+const REFINE = { revision: 'Put the date in the title when the change has one. A reader plans their work by it.' }
+
+const QUESTION =
+  'When does a reader need the date: on every release, or only when a change starts or stops on a set day?'
+const QUESTION_2 = 'Where should the date go, so the reader sees it before anything else?'
+const DRAFT =
+  'It now names when the date matters and where it goes.\n\n```\n- Put the date in the title when a change starts or stops on a set day. A reader plans their work around it.\n```\n\nDoes this say what you meant?'
+const CHAT = 'The rule says "try to", so the agent treats the date as optional. Name when it is required and where it goes.'
+
+let prompt = ''
+process.stdin.on('data', (chunk) => (prompt += chunk))
+process.stdin.on('end', async () => {
+  say({ type: 'system', subtype: 'init', model: 'claude-sonnet-5-5' })
+  if (schema) {
+    const out = schema.includes('revision') ? REFINE : REWRITES
+    const json = JSON.stringify(out)
+    for (let i = 0; i < json.length; i += 24) {
+      await sleep(25)
+      say({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'input_json_delta', partial_json: json.slice(i, i + 24) } } })
+    }
+    say({ type: 'result', subtype: 'success', is_error: false, result: '', structured_output: out, usage: { input_tokens: 2100, output_tokens: 90 } })
+    return
+  }
+  const text = system.includes('improve one rule')
+    ? system.includes('fenced code block') ? DRAFT : prompt.includes('set day, like') ? QUESTION_2 : QUESTION
+    : CHAT
+  for (let i = 0; i < text.length; i += 12) {
+    await sleep(20)
+    say({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: text.slice(i, i + 12) } } })
+  }
+  say({ type: 'result', subtype: 'success', is_error: false, result: text, usage: { input_tokens: 1800, output_tokens: 60 } })
+})

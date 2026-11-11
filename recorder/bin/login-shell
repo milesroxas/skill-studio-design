@@ -1,0 +1,5 @@
+#!/bin/sh
+# Stand-in for the user's login shell while the reel is filmed. The app reads the
+# login shell's PATH and puts it first; this answers with the PATH it was given,
+# which starts at recorder/bin, so the stand-in claude runs and never the real one.
+printf '__SKILL_STUDIO_PATH__%s__SKILL_STUDIO_PATH__' "$PATH"

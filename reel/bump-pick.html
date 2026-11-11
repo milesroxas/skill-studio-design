@@ -1,0 +1,20 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="kit.css">
+</head>
+<body>
+<div class="stage">
+  <div class="bump">
+    <div class="board" style="left: 150px; top: 400px"></div>
+  </div>
+</div>
+<script type="module">
+import { bumper } from './bumper.js'
+
+const rows = [{"cols":5,"size":"s","events":[{"at":0.39999999999999997,"text":"05/05","stagger":0.02,"spin":4}]},{"cols":21,"size":"l","space":24,"events":[{"at":0.43999999999999995,"text":"JEV CHECKS. YOU ?????","tones":[[16,21,"dim"]],"stagger":0.026,"spin":6},{"at":1.15,"text":"JEV CHECKS. YOU PICK.","tones":[[16,21,"key"]],"stagger":0.03,"spin":8}]},{"cols":27,"size":"s","space":28,"events":[{"at":1.3499999999999999,"text":"YOUR PICK IS THE LAST WORD.","stagger":0.009,"spin":5}]}]
+window.film = bumper({ duration: 4.1, seed: 105, rows })
+</script>
+</body>
+</html>

@@ -1,0 +1,279 @@
+{
+  "stills": "../recorder/out/stills",
+  "plates": [
+    {
+      "name": "skill-studio-intro-library",
+      "w": 1248,
+      "h": 702,
+      "base": {
+        "src": "library.png",
+        "left": 64,
+        "top": 48,
+        "scale": 0.8
+      },
+      "pieces": [
+        {
+          "x": 244,
+          "y": 140,
+          "w": 1092,
+          "h": 322,
+          "r": 10
+        },
+        {
+          "src": "settings-model.png",
+          "x": 248,
+          "y": 268,
+          "w": 900,
+          "h": 258,
+          "r": 14,
+          "to": {
+            "left": 430,
+            "top": 470,
+            "scale": 0.8
+          },
+          "card": true
+        }
+      ]
+    },
+    {
+      "name": "skill-studio-walkthrough",
+      "w": 928,
+      "h": 619,
+      "base": {
+        "src": "../walkthrough/edit-start.jpg",
+        "cssWidth": 1200,
+        "cssHeight": 750,
+        "left": 10,
+        "top": 44,
+        "scale": 0.77
+      },
+      "pieces": [
+        {
+          "x": 0,
+          "y": 482,
+          "w": 232,
+          "h": 110,
+          "r": 8,
+          "lift": 1.04
+        },
+        {
+          "x": 504,
+          "y": 192,
+          "w": 650,
+          "h": 186,
+          "r": 10,
+          "lift": 1.03
+        }
+      ]
+    },
+    {
+      "name": "skill-studio-one-screen",
+      "w": 1248,
+      "h": 702,
+      "base": {
+        "src": "results.png",
+        "left": 80,
+        "top": 36,
+        "scale": 0.8
+      },
+      "pieces": [
+        {
+          "x": 512,
+          "y": 264,
+          "w": 404,
+          "h": 362,
+          "r": 12
+        },
+        {
+          "x": 924,
+          "y": 264,
+          "w": 406,
+          "h": 292,
+          "r": 12
+        },
+        {
+          "x": 500,
+          "y": 752,
+          "w": 680,
+          "h": 44,
+          "r": 8,
+          "lift": 1.03
+        }
+      ]
+    },
+    {
+      "name": "skill-studio-mark-met",
+      "w": 928,
+      "h": 619,
+      "base": {
+        "src": "results-marked.png",
+        "left": -658,
+        "top": -246,
+        "scale": 1.4,
+        "frame": false
+      },
+      "pieces": [
+        {
+          "x": 522,
+          "y": 348,
+          "w": 384,
+          "h": 70,
+          "r": 8
+        },
+        {
+          "x": 522,
+          "y": 426,
+          "w": 384,
+          "h": 94,
+          "r": 10,
+          "lift": 1.05
+        }
+      ]
+    },
+    {
+      "name": "skill-studio-selection-tools",
+      "w": 448,
+      "h": 299,
+      "base": {
+        "src": "editor-tools.png",
+        "left": -382,
+        "top": -246,
+        "scale": 0.91,
+        "frame": false
+      },
+      "pieces": [
+        {
+          "x": 446,
+          "y": 296,
+          "w": 441,
+          "h": 221,
+          "r": 12,
+          "lift": 1.03
+        },
+        {
+          "x": 510,
+          "y": 520,
+          "w": 316,
+          "h": 28,
+          "r": 4
+        }
+      ]
+    },
+    {
+      "name": "skill-studio-replaced",
+      "w": 768,
+      "h": 614,
+      "base": {
+        "src": "editor-replaced.png",
+        "left": -435,
+        "top": -35,
+        "scale": 0.885,
+        "frame": false
+      },
+      "pieces": [
+        {
+          "x": 500,
+          "y": 54,
+          "w": 848,
+          "h": 36,
+          "r": 8
+        },
+        {
+          "x": 510,
+          "y": 519,
+          "w": 596,
+          "h": 30,
+          "r": 6,
+          "lift": 1.04
+        }
+      ]
+    },
+    {
+      "name": "skill-studio-auto-refine",
+      "w": 768,
+      "h": 432,
+      "base": {
+        "src": "editor-refine.png",
+        "left": -280,
+        "top": -150,
+        "scale": 1,
+        "frame": false
+      },
+      "pieces": [
+        {
+          "x": 446,
+          "y": 179,
+          "w": 441,
+          "h": 338,
+          "r": 12,
+          "lift": 1.02
+        },
+        {
+          "x": 510,
+          "y": 520,
+          "w": 328,
+          "h": 28,
+          "r": 4
+        }
+      ]
+    },
+    {
+      "name": "skill-studio-suggest-changes",
+      "w": 768,
+      "h": 432,
+      "base": {
+        "src": "editor-rewrites.png",
+        "left": -296,
+        "top": -120,
+        "scale": 1,
+        "frame": false
+      },
+      "pieces": [
+        {
+          "x": 346,
+          "y": 140,
+          "w": 641,
+          "h": 377,
+          "r": 12,
+          "lift": 1.02
+        },
+        {
+          "x": 510,
+          "y": 520,
+          "w": 328,
+          "h": 28,
+          "r": 4
+        }
+      ]
+    },
+    {
+      "name": "skill-studio-help-me-improve",
+      "w": 768,
+      "h": 432,
+      "base": {
+        "src": "improve-3.png",
+        "left": -157,
+        "top": -80,
+        "scale": 0.68,
+        "frame": false
+      },
+      "pieces": [
+        {
+          "x": 1001,
+          "y": 0,
+          "w": 359,
+          "h": 692,
+          "r": 0
+        },
+        {
+          "x": 510,
+          "y": 720,
+          "w": 328,
+          "h": 30,
+          "r": 4,
+          "lift": 1.03
+        }
+      ]
+    }
+  ]
+}

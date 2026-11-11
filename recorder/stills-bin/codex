@@ -1,0 +1,5 @@
+#!/bin/sh
+# Stand-in for the `codex` CLI while stills are taken: signed in on a ChatGPT plan.
+if [ "$1" = "login" ] && [ "$2" = "status" ]; then echo "Logged in using ChatGPT"; exit 0; fi
+if [ "$1" = "--version" ]; then echo "codex-cli 0.80.0"; exit 0; fi
+exit 0

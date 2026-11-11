@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="kit.css">
+</head>
+<body>
+<div class="stage">
+  <div class="ring" data-x="511" data-y="559.2656" data-w="650.1172" data-h="55" data-in="5.6255" data-out="6.9"></div>
+  <div class="pill" data-dir="down" data-x="540" data-y="613.2656" data-in="5.8255" data-out="6.9">Exact: a number the agent can count</div>
+</div>
+<script type="module">
+import { shot } from './kit.js'
+import data from './shots/edit.js'
+
+window.film = shot({ data, video: 'assets/edit.mp4', lead: 0.55, tail: 0.45 })
+</script>
+</body>
+</html>

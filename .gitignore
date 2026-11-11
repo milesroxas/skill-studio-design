@@ -25,6 +25,7 @@ recorder/old/
 recorder/review/
 recorder/explore/
 recorder/stubtest/
+recorder/site/out/
 
 # Elyx: fetched dependencies (commit elyx.lock)
 elyx_deps/

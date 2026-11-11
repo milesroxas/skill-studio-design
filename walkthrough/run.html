@@ -1,0 +1,18 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="kit.css">
+</head>
+<body>
+<div class="stage">
+  <div class="pill" data-dir="right" data-x="230" data-y="73" data-in="4.2472" data-out="9">v0 scores 83</div>
+</div>
+<script type="module">
+import { shot } from './kit.js'
+import data from './shots/run.js'
+
+window.film = shot({ data, video: 'assets/run.mp4', lead: 0.55, tail: 0.45 })
+</script>
+</body>
+</html>

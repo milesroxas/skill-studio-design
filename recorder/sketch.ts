@@ -141,7 +141,7 @@ export const LIFT = `(() => {
 })()`
 
 /**
- * The word diff on Compare, as it is drawn: its box, and every run of text cut
+ * The word diff on Results, as it is drawn: its box, and every run of text cut
  * into one piece per line, each with its kind ('same', 'del' struck through,
  * 'ins' marked), box and type. The film rebuilds it to animate the changes.
  */
@@ -193,5 +193,60 @@ export const DIFF = `(() => {
     flush(text.length)
   }
   const r = box.getBoundingClientRect()
-  return { box: { x: r.x, y: r.y, w: r.width, h: r.height }, ground: getComputedStyle(box).backgroundColor, radius: getComputedStyle(box).borderTopLeftRadius, pieces }
+  // The fill the diff sits on: its own, or the first filled box around it.
+  let filled = box
+  while (filled && /rgba\\(0, 0, 0, 0\\)|transparent/.test(getComputedStyle(filled).backgroundColor)) filled = filled.parentElement
+  return { box: { x: r.x, y: r.y, w: r.width, h: r.height }, ground: filled ? getComputedStyle(filled).backgroundColor : 'transparent', radius: getComputedStyle(box).borderTopLeftRadius, pieces }
+})()`
+
+/**
+ * One rule in the editor, as it is drawn: the words of `text`, cut into one
+ * piece per line on screen, each with its box and type, and the fill the editor
+ * sits on. The film sets a rewrite in over the rule it replaces.
+ */
+export const RULE = (text: string) => `(() => {
+  const want = ${JSON.stringify(text)}
+  const line = [...document.querySelectorAll('.cm-line')].find((l) => l.textContent.includes(want))
+  if (!line) return null
+  const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT)
+  const range = document.createRange()
+  const pieces = []
+  // Where the rule starts in the line's text: it can run across several nodes,
+  // and the list mark before it is not the rule.
+  const begin = line.textContent.indexOf(want)
+  let seen = 0
+  while (walker.nextNode()) {
+    const node = walker.currentNode
+    const text = node.textContent
+    const at = seen
+    seen += text.length
+    if (seen <= begin) continue
+    const from = Math.max(0, begin - at)
+    const cs = getComputedStyle(node.parentElement)
+    let start = from
+    let top = null
+    const flush = (end) => {
+      if (end <= start) return
+      range.setStart(node, start)
+      range.setEnd(node, end)
+      const r = range.getBoundingClientRect()
+      const s = text.slice(start, end)
+      if (s.trim()) pieces.push({ text: s, x: r.x, y: r.y, w: r.width, h: r.height, size: parseFloat(cs.fontSize), weight: cs.fontWeight, mono: /mono/i.test(cs.fontFamily), color: cs.color, spacing: cs.letterSpacing })
+      start = end
+    }
+    for (let i = from; i < text.length; i += 1) {
+      range.setStart(node, i)
+      range.setEnd(node, i + 1)
+      const rects = range.getClientRects()
+      if (!rects.length) continue
+      const y = Math.round(rects[rects.length - 1].top)
+      if (top !== null && Math.abs(y - top) > 4) flush(i)
+      top = y
+    }
+    flush(text.length)
+  }
+  let filled = line
+  while (filled && /rgba\\(0, 0, 0, 0\\)|transparent/.test(getComputedStyle(filled).backgroundColor)) filled = filled.parentElement
+  const lr = line.getBoundingClientRect()
+  return { line: { x: lr.x, y: lr.y, w: lr.width, h: lr.height }, ground: filled ? getComputedStyle(filled).backgroundColor : 'transparent', pieces }
 })()`

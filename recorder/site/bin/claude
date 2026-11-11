@@ -1,0 +1,107 @@
+#!/usr/bin/env node
+// Stand-in for the `claude` CLI while the portfolio shots are filmed. It answers
+// the three editor actions on a selected rule (a structured reply when the app
+// sends --json-schema, a short question for Help me improve) and otherwise does
+// what the reel's stub does: runs a release note, so nothing costs a model call.
+import { mkdirSync, writeFileSync } from 'node:fs'
+const args = process.argv.slice(2)
+const flag = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined)
+const model = flag('--model') ?? 'sonnet'
+const id = /haiku/.test(model) ? 'claude-haiku-5-5' : 'claude-sonnet-5-5'
+const sleep = (ms) => new Promise((done) => setTimeout(done, ms))
+const say = (event) => process.stdout.write(`${JSON.stringify(event)}\n`)
+const pace = Number(process.env.REEL_PACE ?? 1)
+let prompt = ''
+process.stdin.on('data', (chunk) => (prompt += chunk))
+process.stdin.on('end', async () => {
+  const schema = flag('--json-schema')
+  const system = flag('--system-prompt') ?? ''
+  const selection = /<selection>\n([\s\S]*?)\n<\/selection>/.exec(prompt + system)?.[1]?.trim() ?? ''
+  say({ type: 'system', subtype: 'init', model: id })
+  await sleep(500 * pace)
+  const usage = { input_tokens: 2140, output_tokens: 96 }
+  const stream = async (text, kind, perChunk = 40) => {
+    const words = text.split(/(?<=\s)/)
+    for (const w of words) {
+      say({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: kind, [kind === 'text_delta' ? 'text' : 'partial_json']: w } } })
+      await sleep(perChunk * pace)
+    }
+  }
+  if (schema) {
+    const shape = JSON.parse(schema)
+    let out
+    if (shape.properties?.revision) {
+      out = { revision: rewriteOf(selection).practice }
+    } else {
+      out = rewriteOf(selection)
+    }
+    await stream(JSON.stringify(out), 'input_json_delta', 18)
+    say({ type: 'result', subtype: 'success', result: JSON.stringify(out), structured_output: out, usage, total_cost_usd: 0.0021 })
+    return
+  }
+  if (/helping a writer improve one rule/.test(system)) {
+    const text = /Ask now/.test(system)
+      ? questionOf(system)
+      : 'Here is the rule with the number and the reason in place:\n\n```\n- Keep the note under 120 words, title included. Past one screen, the reader stops before the line that says what to do.\n```'
+    await stream(text, 'text_delta', 45)
+    say({ type: 'result', subtype: 'success', result: text, usage, total_cost_usd: 0.0018 })
+    return
+  }
+  // A run: the reel's stub, unchanged.
+  const NOTES = [
+    [/export/i, '# Export remembers your last folder\n\nThe export dialog now opens in the folder you last exported to. Repeat exports skip the folder prompt, so a weekly report takes one step less.\n\nFind it in Settings > Export. It is on for every account from today.\n'],
+    [/reports/i, '# /v1/reports is removed on 1 March 2027\n\nFrom 1 March 2027 the API no longer answers `/v1/reports`. Calls to it will fail, so move to `/v3/reports` before then.\n\n`/v3/reports` returns the same fields and adds `generated_at`. Nothing else in the API changes.\n\nFind the endpoint under Reports in the API reference.\n'],
+    [/offline/i, '# Offline edits no longer overwrite each other\n\nIf you edit the same note offline on two devices, the app now keeps both versions and asks which one to keep.\n\nThe fix is in version 4.2.1 for iOS and Android.\n'],
+  ]
+  const note = (NOTES.find(([test]) => test.test(prompt)) ?? NOTES[0])[1]
+  let n = 0
+  const tool = async (name, input, result, ms) => {
+    n += 1
+    say({ type: 'assistant', message: { content: [{ type: 'tool_use', id: `t${n}`, name, input }] } })
+    await sleep(ms * pace)
+    say({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: `t${n}`, content: result }] } })
+  }
+  await sleep((300 + Math.random() * 900) * pace)
+  await tool('Read', { file_path: '.agents/skills/release-notes/SKILL.md' }, 'name: release-notes', 500)
+  await tool('Read', { file_path: 'prompt.md' }, prompt.slice(0, 80), 400)
+  mkdirSync('outputs', { recursive: true })
+  writeFileSync('outputs/output.md', note)
+  await tool('Write', { file_path: 'outputs/output.md' }, 'File created', 700 + Math.random() * 600)
+  const text = 'Wrote the release note to `outputs/output.md`.'
+  say({ type: 'assistant', message: { content: [{ type: 'text', text }] } })
+  say({ type: 'result', subtype: 'success', result: text, total_cost_usd: /haiku/.test(model) ? 0.0034 : 0.0412 + Math.random() * 0.004, usage: { input_tokens: 81200, output_tokens: 1180 } })
+})
+
+/** Three rewrites of the one rule the shots select; a plain fallback for any other. */
+function rewriteOf(selection) {
+  if (/under 120 words/.test(selection))
+    return {
+      practice: '- Keep the note under 120 words, title included. Past one screen, the reader stops before the line that says what to do.',
+      direct: '- Under 120 words, title included. A note longer than one screen is not read.',
+      shorter: '- Under 120 words. Past one screen, no one reads on.',
+    }
+  if (/excited/.test(selection))
+    return {
+      practice: '- Never use "excited", "thrilled" or "revolutionary", in the title or the body. Hype makes the reader doubt the facts beside it.',
+      direct: '- Cut "excited", "thrilled" and "revolutionary" wherever they appear. Hype makes the reader doubt the facts beside it.',
+      shorter: '- Never "excited", "thrilled" or "revolutionary". Hype makes the facts beside it doubtful.',
+    }
+  const base = selection.replace(/^-\s*/, '')
+  return {
+    practice: `- ${base} Without this, the note loses the reader at the first line.`,
+    direct: `- ${base.replace(/^(Try to|Consider|Should)\s+/i, '')}`,
+    shorter: `- ${base.split('. ')[0]}.`,
+  }
+}
+
+function questionOf(system) {
+  if (/what does the agent do differently/.test(system))
+    return 'When the agent reads this line, what does it do differently from a note with no limit? If the honest answer is nothing, say so.'
+  if (/step the agent takes, or a quality/.test(system))
+    return 'Is this a step the agent takes while writing, or a quality you want the finished note to have? If a quality, what would the agent do to get it?'
+  if (/Where is the line/.test(system))
+    return 'Where is the line: does the 120 count the title, and what happens to a note that lands at 130?'
+  if (/What goes wrong without this rule/.test(system))
+    return 'What goes wrong when a note runs past one screen? One sentence is enough.'
+  return 'Does this rule belong in this skill, or in a reference file beside it?'
+}

@@ -1,0 +1,18 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="kit.css">
+</head>
+<body>
+<div class="stage">
+<div class="pill" data-dir="right" data-x="570" data-y="389" data-in="2.55" data-out="9">Sharper</div>
+</div>
+<script type="module">
+import { shot } from './kit.js'
+import data from './shots/compare.js'
+
+window.film = shot({ data, video: 'assets/compare.mp4', intro: 0.55, outro: 0.8 })
+</script>
+</body>
+</html>

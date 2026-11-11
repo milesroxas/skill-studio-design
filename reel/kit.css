@@ -334,10 +334,9 @@ body {
 .addr .n { opacity: 0.38; }
 
 /* The version lift, built up over the footage's own. */
-.lift, .lift-ground, .lift-rule, .lift-band, .lift-mask { position: absolute; }
+.lift, .lift-ground, .lift-band, .lift-mask { position: absolute; }
 .lift { inset: 0; }
 .lift-ground { background: var(--app); }
-.lift-rule { transform-origin: 0 50%; }
 .lift-mask { overflow: hidden; white-space: pre; }
 .lift-mask span { display: block; white-space: pre; }
 
@@ -346,3 +345,10 @@ body {
 .diff-over { position: absolute; left: 0; top: 0; }
 .diff-mark { position: absolute; transform-origin: 0 50%; border-radius: 2px; }
 .diff-strike { position: absolute; height: 1px; transform-origin: 0 50%; }
+
+/* A rule replaced: the old words leave upward, the new ones rise in. */
+.swap-row { position: absolute; white-space: pre; }
+.swap-word { display: inline-block; overflow: hidden; vertical-align: top; white-space: pre; }
+.swap-word span { display: inline-block; white-space: pre; }
+.swap .lift-ground { mask-image: linear-gradient(90deg, transparent, #000 2px, #000 calc(100% - 8px), transparent); }
+.swap-strike { position: absolute; height: 1.5px; transform-origin: 0 50%; }
