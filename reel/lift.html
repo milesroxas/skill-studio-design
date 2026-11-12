@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="kit.css">
+</head>
+<body>
+<div class="stage">
+</div>
+<script type="module">
+import { shot } from './kit.js'
+import data from './shots/lift.js'
+
+window.film = shot({ data, video: 'assets/lift.mp4', lead: 0, tail: 0.35, cutIn: true })
+</script>
+</body>
+</html>

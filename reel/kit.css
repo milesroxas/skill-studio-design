@@ -15,6 +15,11 @@
   --ink: #141615;
   --stage: #0d0e0d;
   --app: #141615;
+  /* The app's own surfaces (skill-studio styles.css): background, sidebar, muted, border. */
+  --app-bg: rgb(13, 15, 19);
+  --app-side: oklch(0.125 0.01 267.3);
+  --app-muted: oklch(0.21 0.01 267.3);
+  --app-border: oklch(0.25 0.01 267.3);
   --paper: #f4f2eb;
   --dim: rgba(244, 242, 235, 0.52);
   --faint: rgba(244, 242, 235, 0.16);
@@ -43,66 +48,58 @@ body {
   overflow: hidden;
 }
 
-/* The app, drawn as shapes: a window whose parts are blocks, 1200 × 750 inside. */
+/* The app as a skeleton: its frame and layout as rounded bars, no words, in two
+   quiet greys taken from the app (--muted for bars, --border for rules), on its
+   own background and sidebar fills. */
 .window {
   position: absolute;
-  left: 252px;
-  top: 97px;
-  width: 1416px;
-  height: 885px;
-  border-radius: 18px;
+  border-radius: 20px;
   overflow: hidden;
-  background: var(--app);
-  box-shadow: 0 0 0 1px rgba(244, 242, 235, 0.1);
-  transform-origin: 50% 60%;
+  background: var(--app-bg);
+  box-shadow: 0 0 0 1px var(--app-border), 0 48px 96px -32px rgba(0, 0, 0, 0.9);
+  transform-origin: 50% 55%;
 }
-.plan {
+.window-in {
   position: absolute;
   left: 0;
   top: 0;
   width: 1200px;
   height: 750px;
   transform-origin: 0 0;
-  transform: scale(1.18);
 }
-/* One block of the plan, traced from the real screen: a line of text, a control, an outline, a hairline. */
-.sk {
+.skel, .skel-content {
   position: absolute;
-  background: rgba(244, 242, 235, 0.08);
+  inset: 0;
 }
-.sk.text { background: rgba(244, 242, 235, 0.15); }
-.sk.mute { background: rgba(244, 242, 235, 0.075); }
-.sk.ink { background: rgba(20, 22, 21, 0.45); }
-.sk.solid { background: rgba(244, 242, 235, 0.36); }
-.sk.icon { background: rgba(244, 242, 235, 0.09); }
-.sk.line { background: rgba(244, 242, 235, 0.07); }
-.sk.hollow {
-  background: none;
-  box-shadow: 0 0 0 1px rgba(244, 242, 235, 0.1) inset;
-}
-.nav-name {
-  position: absolute;
-  font-family: var(--sans);
-  color: var(--paper);
-  white-space: nowrap;
-}
-
-/* The feature itself: the filmed app, cut to the part in question and lifted off the plan. */
-.card {
+.skel-side {
   position: absolute;
   left: 0;
   top: 0;
-  overflow: hidden;
-  border-radius: 16px;
-  background: var(--app);
+  width: 232px;
+  height: 750px;
+  background: var(--app-side);
+  box-shadow: 1px 0 0 var(--app-border);
 }
-.card::after {
-  content: "";
+.sb {
   position: absolute;
-  inset: 0;
-  border-radius: 16px;
-  box-shadow: 0 0 0 1px rgba(244, 242, 235, 0.18) inset;
-  pointer-events: none;
+  display: block;
+  background: var(--app-muted);
+}
+.sb.rule { background: var(--app-border); }
+.sb.field { background: color-mix(in oklch, var(--app-muted) 70%, var(--app-bg)); }
+.sb.pick { background: color-mix(in oklch, var(--app-muted) 80%, var(--app-bg)); }
+
+/* The beat's part: the filmed app, cut to that part and lifted off its place. */
+.card {
+  --lift: 1;
+  position: absolute;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--app-bg);
+  transform-origin: 50% 50%;
+  box-shadow:
+    0 0 0 1px rgba(244, 242, 235, calc(0.06 + var(--lift) * 0.06)),
+    0 calc(var(--lift) * 32px) calc(var(--lift) * 64px) calc(var(--lift) * -16px) rgba(0, 0, 0, 0.8);
 }
 .content {
   position: absolute;

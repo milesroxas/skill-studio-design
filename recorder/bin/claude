@@ -49,7 +49,36 @@ const REWRITES = {
   direct: 'Keep every paragraph to two sentences or fewer; readers skim release notes.',
   shorter: 'Two sentences per paragraph at most: readers skim.',
 }
-if (args.includes('--json-schema')) {
+// The assistant's reply: it names the vague rule and offers a case that tests it.
+// A run never passes --system-prompt; the assistant always does.
+const CHAT = [
+  'Rule 07 is the vague one. "Try to" leaves the limit to the agent, so Jev cannot tell whether a note kept it. Say the limit outright: "Keep each paragraph to two sentences or fewer."',
+  '',
+  'Here is a case that holds a long change to it:',
+  '',
+  '~~~~ case',
+  JSON.stringify({
+    title: 'A long change, kept short',
+    prompt: 'Write a release note: search now matches typos, filters by date and remembers your last query. It ships today on the web and in version 6.1 on mobile.',
+    expected: 'A short note with no paragraph over two sentences.',
+    checks: ['No paragraph is longer than two sentences.', { statement: 'The note says it ships today on the web and in 6.1 on mobile.', weight: 2 }],
+  }),
+  '~~~~',
+  '',
+].join('\n')
+if (args.includes('--system-prompt') && !args.includes('--json-schema')) {
+  process.stdin.resume()
+  process.stdin.on('end', async () => {
+    const pace = Number(process.env.REEL_PACE ?? 1)
+    say({ type: 'system', subtype: 'init', model: 'claude-sonnet-5-5' })
+    await sleep(500 * pace)
+    for (let i = 0; i < CHAT.length; i += 9) {
+      await sleep(28 * pace)
+      say({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: CHAT.slice(i, i + 9) } } })
+    }
+    say({ type: 'result', subtype: 'success', is_error: false, result: CHAT, usage: { input_tokens: 3400, output_tokens: 160 } })
+  })
+} else if (args.includes('--json-schema')) {
   process.stdin.resume()
   process.stdin.on('end', async () => {
     const pace = Number(process.env.REEL_PACE ?? 1)

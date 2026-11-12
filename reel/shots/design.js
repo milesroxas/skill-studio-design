@@ -1,0 +1,4 @@
+// The design beat. remap: [seconds into the beat, seconds into assets/design.mp4].
+// focus: the part of the app lifted off the window, in the app's 1200 × 750. screen: the skeleton round it.
+// events: where the pointer went, in footage time.
+export default {"length":4,"screen":"results","remap":[[0,0.8],[0.8,1.6104],[2,2.8104],[2.25,3.7614],[2.7,4.2114],[2.95,5.1854],[4,6.2354]],"focus":{"x":508,"y":197,"w":649,"h":492},"events":[{"t":-0.0006,"kind":"mark","name":"begin","x":800,"y":420},{"t":1.0144,"kind":"move","x0":800,"y0":420,"x":607.8398,"y":221,"t1":1.5188},{"t":1.6104,"kind":"down","x":607.8398,"y":221},{"t":3.3024,"kind":"move","x0":607.8398,"y0":221,"x":545.3516,"y":221,"t1":3.664},{"t":3.7614,"kind":"down","x":545.3516,"y":221},{"t":4.7444,"kind":"move","x0":545.3516,"y0":221,"x":607.8398,"y":221,"t1":5.106},{"t":5.1854,"kind":"down","x":607.8398,"y":221},{"t":6.6664,"kind":"mark","name":"end"}],"exit":true}

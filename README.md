@@ -8,7 +8,7 @@ This repo holds no app code. It is kept separate so its work never runs the app'
 
 | Folder | What it is |
 | --- | --- |
-| `reel/` | The 57 s demo reel, an [OpenFilm](https://www.npmjs.com/package/openfilm) project. |
+| `reel/` | The 73 s demo reel, an [OpenFilm](https://www.npmjs.com/package/openfilm) project. |
 | `onboarding/` | The 14.65 s onboarding teaser, an OpenFilm project. |
 | `walkthrough/` | The 66 s guided walkthrough reel, an OpenFilm project. |
 | `walkthrough-visual/` | The same reel with no words of its own: 64 s, the app alone, larger. |
@@ -28,7 +28,7 @@ Renders, filmed clips and generated audio are not committed. The build below rec
 # 1. Build the app
 cd ../skill-studio && pnpm install && pnpm build && cd -
 
-# 2. Film the five shots into recorder/out, with the app's tsx so its import aliases resolve
+# 2. Film the eleven beats into recorder/out, with the app's tsx so its import aliases resolve
 cd recorder && ../../skill-studio/node_modules/.bin/tsx --tsconfig ../../skill-studio/tsconfig.json record.ts && cd -
 
 # 3. Build the pages, sound and music, and copy the clips into reel/assets
@@ -39,11 +39,18 @@ cd reel && npx openfilm open
 npx openfilm render
 ```
 
-The recorder runs the app on a scratch home with sample data. A stand-in `claude` CLI in `recorder/bin` answers the run shot, so filming makes no model calls. The app reads your login shell's `PATH` and puts it first, so the recorder also hands it a stand-in shell (`recorder/bin/login-shell`), and the run shot fails if the stand-in `claude` was not the one called.
+The recorder runs the app on a scratch home with sample data (`recorder/reel-seed.ts`: the guide's sample, plus two landing-pages runs whose pricing pages are written by hand). A stand-in `claude` CLI in `recorder/bin` answers the run, the assistant and Suggest changes, so filming makes no model calls. The app reads your login shell's `PATH` and puts it first, so the recorder also hands it a stand-in shell (`recorder/bin/login-shell`), and the run beat fails if the stand-in `claude` was not the one called.
 
-The five shots follow the app's loop: pick one of the three rewrites Suggest changes gives for a weak rule and watch it replace the rule in the editor, run the new version, see the version lift, compare two outputs word for word, then mark a verdict Jev got wrong and pick the better output. The stand-in `claude` also answers Suggest changes for that one rule.
+The reel has four chapters, each a bumper and two or three beats cut straight from one to the next:
 
-The recorder measures every box the film's camera moves to on the screen as it is at that moment, and grows it until no line of text or control crosses its edge, so nothing the film shows is cut. Each shot's pacing is tied to its recorded clicks, so a re-film keeps it.
+1. Library: search the skills, start a new one, pick one back up from In progress.
+2. Editor: the writing checks underline a hedge in a rule; the assistant names the vague rule and adds a case for it; Suggest changes rewrites the rule.
+3. Cases: write a case once; Run tests the new version on every case.
+4. Results: the pricing page v0 and v1 drew, flipped in one frame; two release notes word for word; the version lift.
+
+Film every beat in one session (no argument), so what one beat leaves behind, such as the assistant's case, shows in the next. Chapters, beat lengths and pacing live in `CHAPTERS` in `recorder/build.mjs`.
+
+Each beat shows one part of the app, filmed, on a skeleton of the window (`reel/kit.js`): rounded bars in the app's own greys, the same window in every beat, so a cut changes only the part. The part keeps one size all beat; it lifts off its place as the beat starts and settles back before the next. The recorder measures that part on the screen before every click and once more at the beat's end, and grows it until no line of text or control crosses its edge, so nothing the film shows is cut. Each beat's pacing is tied to its recorded clicks, so a re-film keeps it.
 
 The recorder refuses a build of the app older than its source or with uncommitted changes in `src`. To film a release while other work sits in the app's checkout, build that release in a separate worktree and point the recorder at it with `SKILL_STUDIO=<path>`.
 

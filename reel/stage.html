@@ -4,13 +4,14 @@
 <meta charset="utf-8">
 <link rel="stylesheet" href="kit.css">
 <style>
-  .stage { background: var(--stage); }
+  /* A low light from the top left, falling off to the stage colour: the ground the product sits on. */
+  .stage { background: radial-gradient(110% 90% at 18% 0%, #1c1d1b 0%, #121312 45%, #0b0c0b 100%); }
 </style>
 </head>
 <body>
 <div class="stage"></div>
 <script type="module">
-// The ground the whole film stands on: one flat colour.
+// The ground the whole film stands on.
 window.film = { duration: 45, frame() {} }
 </script>
 </body>

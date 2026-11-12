@@ -1,0 +1,4 @@
+// The create beat. remap: [seconds into the beat, seconds into assets/create.mp4].
+// focus: the part of the app lifted off the window, in the app's 1200 × 750. screen: the skeleton round it.
+// events: where the pointer went, in footage time.
+export default {"length":3.6,"screen":"library","remap":[[0,0.3698],[0.45,0.8198],[0.75,1.1198],[0.8,1.6698],[2.6,3.5138],[3,3.9138],[3.6,4.5138]],"focus":{"x":240,"y":56,"w":941,"h":646},"events":[{"t":-0.0012,"kind":"mark","name":"begin","x":900,"y":300},{"t":0.2068,"kind":"move","x0":900,"y0":300,"x":1108.2852,"y":90,"t1":0.724},{"t":0.8198,"kind":"down","x":1108.2852,"y":90},{"t":1.6158,"kind":"move","x0":1108.2852,"y0":90,"x":624,"y":181,"t1":2.0158},{"t":3.0598,"kind":"move","x0":624,"y0":181,"x":688.6992,"y":462,"t1":3.572},{"t":3.6638,"kind":"down","x":688.6992,"y":462},{"t":4.9458,"kind":"mark","name":"end"}],"exit":true}

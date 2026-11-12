@@ -1,0 +1,4 @@
+// The chat beat. remap: [seconds into the beat, seconds into assets/chat.mp4].
+// focus: the part of the app lifted off the window, in the app's 1200 × 750. screen: the skeleton round it.
+// events: where the pointer went, in footage time.
+export default {"length":3.8,"screen":"chat","remap":[[0,1.5791],[0.6,2.2771],[1.8,3.7771],[2.3,4.3891],[2.55,4.6391],[3.8,5.8891]],"focus":{"x":840,"y":0,"w":360,"h":456},"events":[{"t":-0.0009,"kind":"mark","name":"begin","x":900,"y":300},{"t":0.0001,"kind":"move","x0":900,"y0":300,"x":1160,"y":23.5,"t1":0.5732},{"t":0.6791,"kind":"down","x":1160,"y":23.5},{"t":1.5871,"kind":"move","x0":1160,"y0":23.5,"x":955.1,"y":321,"t1":2.148},{"t":2.2771,"kind":"down","x":955.1,"y":321},{"t":3.9801,"kind":"move","x0":955.1,"y0":321,"x":1131,"y":305.9922,"t1":4.4178},{"t":4.5391,"kind":"down","x":1131,"y":305.9922},{"t":6.0221,"kind":"mark","name":"end"}],"exit":true,"fadeIn":true,"fadeOut":true}

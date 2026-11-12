@@ -1,7 +1,7 @@
 // What every page of the reel shares: easing, and the shot player. A shot draws
-// the app as shapes, traced from the real screen when it was filmed, and lifts
-// one part of it off that plan as filmed footage, with a pointer and notes over
-// it. Every picture depends only on t.
+// the app as a skeleton window and lifts one part of it, the filmed footage cut
+// to that part, off its place, with the pointer over it. Every picture depends
+// only on t.
 
 export const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v))
 export const lerp = (a, b, k) => a + (b - a) * k
@@ -52,11 +52,16 @@ export const fonts = () =>
     document.fonts.load('500 20px "Geist Mono"'),
   ]).then(() => document.fonts.ready)
 
-/** The plan's window on the stage; K is how much larger than the app it is drawn. */
-const WINDOW = { x: 252, y: 97, w: 1416 }
+/**
+ * The window on the stage, the same in every shot of the film, so a cut between
+ * beats changes only what is on it. K is how much larger than the app (1200 × 750)
+ * it is drawn. A beat's part sits where it is in the app, LIFT times larger, with
+ * one shadow under it.
+ */
+const WINDOW = { x: 192, y: 56, w: 1536 }
 const K = WINDOW.w / 1200
-/** Where a lifted part comes to rest, and the most room it takes. */
-const HERO = { x: 960, y: 540, w: 1560, h: 880, most: 2.1 }
+const WINDOW_H = 750 * K
+const LIFT = 1.06
 
 const el = (tag, cls, parent) => {
   const node = document.createElement(tag)
@@ -76,51 +81,170 @@ function along(keys, at) {
   return keys.at(-1)[1]
 }
 
-/** The blocks of one screen, as elements inside `parent`. */
-function blocks(list, parent) {
-  return list.map(([x, y, w, h, r, kind, extra]) => {
-    const node = el('div', `sk ${kind ?? ''}`, parent)
-    Object.assign(node.style, {
-      left: `${x}px`,
-      top: `${y}px`,
-      width: `${w}px`,
-      height: `${h}px`,
-      borderRadius: `${r}px`,
-    })
-    if (kind === 'area') node.style.background = extra
-    if (kind === 'box') node.style.background = `rgba(244, 242, 235, ${extra})`
+/**
+ * The app as a skeleton: rounded bars with no words, in the app's two quiet
+ * greys, on the 8 px grid of its 1200 × 750. The frame (sidebar, top bar) is the
+ * same on every screen; `screen` picks what the content area holds and which
+ * place in the sidebar is current. Returns the content layer, which fades on
+ * its own when the screen changes at a cut.
+ */
+const SCREENS = {
+  library: { nav: 'library', run: false },
+  editor: { nav: 0, run: true },
+  chat: { nav: 0, run: true },
+  cases: { nav: 1, run: true },
+  results: { nav: 2, run: true },
+  overview: { nav: 2, run: true },
+}
+function skeleton(screen, parent) {
+  const bar = (layer, x, y, w, h = 12, kind = 'bar', r = null) => {
+    const node = el('i', `sb ${kind}`, layer)
+    Object.assign(node.style, { left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px`, borderRadius: `${r ?? h / 2}px` })
     return node
-  })
+  }
+  const rule = (layer, x, y, w, h) => bar(layer, x, y, w, h, 'rule', 0)
+  const app = el('div', 'skel', parent)
+  const s = SCREENS[screen] ?? SCREENS.editor
+
+  // The frame: sidebar and top bar.
+  const side = el('div', 'skel-side', app)
+  bar(side, 168, 16, 32, 16, 'bar', 4)
+  bar(side, 16, 64, 112, 12)
+  bar(side, 16, 84, 64, 8)
+  for (const [k, w] of [[0, 40], [1, 56], [2, 48]]) {
+    bar(side, 16, 128 + k * 32, 16, 16, 'bar', 4)
+    bar(side, 40, 130 + k * 32, w, 12)
+  }
+  for (const [k, w] of [[0, 56], [1, 40], [2, 56]]) {
+    bar(side, 16, 656 + k * 32, 16, 16, 'bar', 4)
+    bar(side, 40, 658 + k * 32, w, 12)
+  }
+  rule(app, 232, 48, 968, 1)
+  bar(app, 256, 16, 16, 16)
+  bar(app, 288, 16, 16, 16)
+  bar(app, 320, 18, 72, 12)
+  bar(app, 1120, 16, 16, 16)
+  bar(app, 1152, 16, 16, 16)
+
+  // What changes with the screen: the current place, and the content area.
+  const content = el('div', 'skel-content', app)
+  const navY = s.nav === 'library' ? 652 : 124 + s.nav * 32
+  bar(content, 8, navY, 216, 24, 'pick', 6)
+  if (s.run) bar(content, 1000, 12, 88, 24, 'bar', 6)
+
+  const column = (x0) => rule(content, x0, 48, 1, 702)
+  const lines = (x, y, widths, gap = 24, h = 10) => widths.forEach((w, i) => bar(content, x, y + i * gap, w, h))
+  if (screen === 'library') {
+    bar(content, 256, 72, 320, 32, 'field', 8)
+    bar(content, 592, 72, 120, 32, 'field', 8)
+    bar(content, 1056, 72, 112, 32, 'field', 8)
+    for (const [top, rows] of [[144, 3], [480, 2]]) {
+      bar(content, 256, top, 104, 16)
+      bar(content, 376, top + 4, 200, 8)
+      rule(content, 248, top + 48, 928, 1)
+      for (let i = 0; i < rows; i += 1) {
+        const y = top + 72 + i * 72
+        bar(content, 256, y, 120, 12)
+        lines(256, y + 24, [240, 200], 16, 8)
+        bar(content, 576, y, 64, 12)
+        for (const x of [784, 848, 912]) bar(content, x, y - 6, 56, 24, 'field', 6)
+        bar(content, 1104, y, 48, 12)
+      }
+    }
+  } else if (screen === 'editor' || screen === 'chat') {
+    const right = screen === 'chat' ? 840 : 1200
+    column(488)
+    bar(content, 256, 72, 64, 16)
+    bar(content, 248, 104, 224, 32, 'field', 8)
+    bar(content, 256, 160, 144, 12)
+    bar(content, 256, 224, 80, 14)
+    lines(256, 256, [160, 96, 144, 96], 24)
+    bar(content, 256, 384, 64, 14)
+    for (const [x, y, w] of [[256, 416, 64], [328, 416, 104], [256, 456, 72], [336, 456, 104]]) bar(content, x, y, w, 28, 'field', 6)
+    bar(content, 520, 68, 80, 12)
+    bar(content, right - 344, 60, 232, 28, 'field', 6)
+    rule(content, 488, 104, right - 488, 1)
+    bar(content, 520, 136, 120, 18)
+    lines(520, 176, [right - 640, right - 720], 24)
+    bar(content, 520, 248, 72, 18)
+    for (let i = 0; i < 7; i += 1) {
+      bar(content, 520, 288 + i * 40, 16, 10)
+      bar(content, 552, 288 + i * 40, Math.max(120, right - 640 - ((i * 53) % 160)), 10)
+    }
+    bar(content, 520, 584, 88, 18)
+    lines(520, 624, [right - 760, right - 680, right - 820], 24)
+    if (screen === 'chat') {
+      column(840)
+      bar(content, 864, 16, 80, 14)
+      bar(content, 856, 648, 328, 88, 'field', 12)
+    }
+  } else if (screen === 'cases') {
+    column(488)
+    bar(content, 256, 72, 64, 16)
+    for (let i = 0; i < 5; i += 1) {
+      bar(content, 256, 112 + i * 56, 200 - ((i * 37) % 64), 12)
+      bar(content, 256, 132 + i * 56, 120, 8)
+    }
+    bar(content, 520, 64, 240, 18)
+    bar(content, 520, 120, 48, 14)
+    bar(content, 520, 152, 56, 10)
+    bar(content, 520, 168, 648, 72, 'field', 8)
+    bar(content, 520, 264, 48, 10)
+    bar(content, 520, 280, 648, 32, 'field', 8)
+    bar(content, 520, 344, 40, 10)
+    for (const [x, w] of [[520, 104], [632, 112]]) bar(content, x, 368, w, 32, 'field', 6)
+    rule(content, 520, 440, 648, 1)
+    bar(content, 520, 472, 200, 12)
+  } else {
+    column(488)
+    bar(content, 256, 72, 64, 16)
+    for (let i = 0; i < 3; i += 1) {
+      bar(content, 256, 112 + i * 64, 120, 12)
+      for (const [x, w] of [[256, 40], [312, 40], [368, 32]]) bar(content, x, 132 + i * 64, w, 16, 'field', 4)
+    }
+    bar(content, 520, 64, 240, 18)
+    bar(content, 888, 60, 280, 28, 'field', 6)
+    if (screen === 'overview') {
+      bar(content, 520, 120, 648, 248, 'field', 12)
+      rule(content, 520, 400, 648, 1)
+      for (let i = 0; i < 4; i += 1) {
+        bar(content, 520, 432 + i * 48, 200, 12)
+        for (const x of [904, 984, 1064]) bar(content, x, 428 + i * 48, 48, 20, 'field', 4)
+      }
+    } else {
+      lines(520, 120, [184, 280], 32)
+      bar(content, 520, 184, 120, 28, 'field', 6)
+      bar(content, 520, 232, 648, 472, 'field', 12)
+    }
+  }
+  return content
 }
 
 /**
- * One shot. `data` is the shot's file under shots/: how long it lasts, the
- * screen it shows, how film time maps to footage time (remap), the part of the
- * app it lifts and when that part changes (focus, in the app's 1200 × 750), and
- * where the pointer went. A bumper's wipe reveals the shot: `lead` seconds come
- * before its zero, and `tail` after its end, under the next page's wipe.
+ * One beat. `data` is the beat's file under shots/: how long it lasts, the screen
+ * it is on, how film time maps to footage time (remap), the part of the app it
+ * lifts (focus, in the app's 1200 × 750) and where the pointer went. The part
+ * stays the same size for the whole beat: it comes in lifting off its place in
+ * the window, and, when another beat of its chapter follows (`exit`), settles
+ * back and goes before the cut. A bumper's wipe reveals a chapter's first beat:
+ * `lead` seconds come before its zero, and `tail` after its end, under the next
+ * page's wipe. A beat that follows another of its chapter on a straight cut is
+ * `cutIn`: the window is already there, and only what changed fades.
  */
-export function shot({ data, video: src, lead = 0, tail = 0 }) {
+export function shot({ data, video: src, lead = 0, tail = 0, cutIn = false }) {
   const stage = document.querySelector('.stage')
   const frame = el('div', 'window', stage)
+  Object.assign(frame.style, { left: `${WINDOW.x}px`, top: `${WINDOW.y}px`, width: `${WINDOW.w}px`, height: `${WINDOW_H}px` })
+  const inner = el('div', 'window-in', frame)
+  inner.style.transform = `scale(${K})`
+  const changing = skeleton(data.screen, inner)
+
+  // The part: the footage, cut to the box in focus, the same box all beat.
+  const box = data.focus
   const card = el('div', 'card', stage)
-
-  // The plan: the screen as it was traced, with the current sidebar item still named.
-  const plan = el('div', 'plan', frame)
-  blocks(data.plan.blocks, plan)
-  const a = data.plan.active
-  const name = a ? el('div', 'nav-name', plan) : null
-  if (a) {
-    name.textContent = a.name
-    const size = parseFloat(/(\d+(?:\.\d+)?)px/.exec(a.font)?.[1] ?? 13)
-    Object.assign(name.style, { left: `${a.x}px`, top: `${a.y}px`, height: `${a.h}px`, fontSize: `${size}px`, lineHeight: `${a.h}px`, fontWeight: /^(\d{3})/.exec(a.font)?.[1] ?? 500 })
-  }
-
-  // The lifted part: the footage, cut to the part in focus.
   const content = el('div', 'content', card)
   const video = el('video', '', content)
   Object.assign(video, { src, muted: true, playsInline: true, preload: 'auto' })
-  for (const ring of document.querySelectorAll('.ring')) content.append(ring)
   const build = data.lift
     ? liftUp(data.lift, content, data.liftUntil ?? Infinity)
     : data.diff
@@ -128,6 +252,16 @@ export function shot({ data, video: src, lead = 0, tail = 0 }) {
       : data.swap
         ? swapUp(data.swap, content, data.swapAt)
         : null
+
+  // Where the part rests: over its own place in the window, LIFT times larger
+  // about its centre, held inside the window's edge.
+  const S = K * LIFT
+  const W = box.w * S
+  const H = box.h * S
+  const cx = clamp(WINDOW.x + (box.x + box.w / 2) * K, WINDOW.x + 8 + W / 2, WINDOW.x + WINDOW.w - 8 - W / 2)
+  const cy = clamp(WINDOW.y + (box.y + box.h / 2) * K, WINDOW.y + 8 + H / 2, WINDOW.y + WINDOW_H - 8 - H / 2)
+  Object.assign(card.style, { left: `${cx - W / 2}px`, top: `${cy - H / 2}px`, width: `${W}px`, height: `${H}px` })
+  content.style.transform = `scale(${S}) translate(${-box.x}px, ${-box.y}px)`
 
   const moves = data.events.filter((e) => e.kind === 'move')
   const start = data.events.find((e) => e.name === 'begin')
@@ -143,10 +277,6 @@ export function shot({ data, video: src, lead = 0, tail = 0 }) {
     return node
   })
 
-  // Notes stand over the lifted part, and the pointer over everything.
-  const pills = [...document.querySelectorAll('.pill')]
-  const rings = [...content.querySelectorAll('.ring')]
-  stage.append(...pills)
   const cursor = el('div', 'cursor', stage)
   cursor.innerHTML =
     '<svg viewBox="0 0 34 42" width="34" height="42"><path d="M6 4v27.5l6.9-6.3 4.6 10.9 5-2.1-4.6-10.7H27z" fill="#141615" stroke="#f4f2eb" stroke-width="2.2" stroke-linejoin="round"/></svg>'
@@ -168,49 +298,6 @@ export function shot({ data, video: src, lead = 0, tail = 0 }) {
     return at
   }
 
-  /**
-   * The part of the app in focus at film time u: the box the lifted part takes
-   * (`x, y, w, h`), and what of the footage shows in it (`see`, and how clearly, `clear`).
-   * A change of focus slides across the app, or, with `cut`, swaps one part for
-   * another while the box changes shape: the footage dips out and back in.
-   */
-  const focus = (u) => {
-    let now = { ...data.focus[0], see: data.focus[0], clear: 1 }
-    for (const next of data.focus.slice(1)) {
-      if (u < next.t) break
-      const raw = span(u, next.t, next.t + next.dur)
-      const k = mech(raw)
-      const box = { x: lerp(now.x, next.x, k), y: lerp(now.y, next.y, k), w: lerp(now.w, next.w, k), h: lerp(now.h, next.h, k) }
-      now = next.cut
-        ? { ...box, see: raw < 0.5 ? now.see : next, clear: raw >= 1 ? 1 : raw < 0.5 ? 1 - span(raw, 0, 0.42) : span(raw, 0.58, 1) }
-        : { ...box, see: box, clear: 1 }
-    }
-    return now
-  }
-
-  /**
-   * Where a part of the app is in the plan (`home`, as the window stands after
-   * `settle`), and where it comes to rest lifted off it: near the middle, drawn a
-   * little toward where it came from (`pull`; 0 rests it dead centre), `most`
-   * times the app's size, taking `big` room.
-   */
-  const restOf = (part, settle = 0) => {
-    const home = {
-      x: WINDOW.x + 708 + (part.x + part.w / 2 - 600) * K * (1 + settle * 0.05),
-      y: WINDOW.y + 442 + (part.y + part.h / 2 - 375) * K * (1 + settle * 0.05),
-    }
-    const most = Math.min(HERO.w / part.w, HERO.h / part.h, HERO.most)
-    const pull = data.pull ?? 0.18
-    const big = { w: part.w * most, h: part.h * most }
-    const rest = {
-      x: clamp(lerp(HERO.x, home.x, pull), 80 + big.w / 2, 1840 - big.w / 2),
-      y: clamp(lerp(HERO.y, home.y, pull), 70 + big.h / 2, 1010 - big.h / 2),
-    }
-    return { home, most, big, rest }
-  }
-  /** Whether any part comes to rest over the sidebar's name; known once the fonts are in. */
-  let covers = null
-
   const seek = (tau) =>
     new Promise((done) => {
       // The middle of a frame of the 30 fps footage, so a seek never lands on an edge.
@@ -226,56 +313,36 @@ export function shot({ data, video: src, lead = 0, tail = 0 }) {
     else video.addEventListener('loadeddata', () => done(), { once: true })
   })
 
+  const length = data.length
   return {
-    duration: lead + data.length + tail,
+    duration: lead + length + tail,
     ready: Promise.all([loaded, fonts()]),
     async frame(t) {
       const u = t - lead
-      const tau = along(data.remap, clamp(u, 0, data.length))
+      const tau = along(data.remap, clamp(u, 0, length))
       await seek(tau)
 
-      // The window settles as the wipe passes; the plan dims as the part lifts off it.
-      const part = focus(u)
-      const lift = mech(span(u, -0.05, 0.5))
-      const settle = 1 - mech(span(t, 0, 0.55))
-      frame.style.transform = `scale(${1 + settle * 0.05})`
-      plan.style.opacity = lerp(1, 0.42, lift)
+      // The window settles as the chapter's wipe passes; a cut leaves it where it is.
+      const settle = cutIn ? 0 : 1 - mech(span(t, 0, 0.55))
+      frame.style.transform = `scale(${1 + settle * 0.03})`
+      // What differs from the beat before or after fades, so a cut never jumps.
+      changing.style.opacity = (data.fadeIn ? span(u, 0, 0.25) : 1) * (data.exit && data.fadeOut ? 1 - span(u, length - 0.25, length) : 1)
 
-      const { home, most, rest } = restOf(part, settle)
-      const scale = Math.exp(lerp(Math.log(K), Math.log(most), lift))
-      const w = part.w * scale
-      const h = part.h * scale
-      // The sidebar's name goes as a part comes to rest over it, so no edge of the part cuts a word.
-      if (name) {
-        covers ??= data.focus.some((f) => {
-          const r = restOf(f)
-          const x = WINDOW.x + a.x * K
-          const y = WINDOW.y + a.y * K
-          return x < r.rest.x + r.big.w / 2 && x + name.offsetWidth * K > r.rest.x - r.big.w / 2 && y < r.rest.y + r.big.h / 2 && y + a.h * K > r.rest.y - r.big.h / 2
-        })
-        name.style.opacity = covers ? 1 - lift : 1
-      }
-      const left = lerp(home.x, rest.x, lift) - w / 2
-      const top = lerp(home.y, rest.y, lift) - h / 2
-      Object.assign(card.style, {
-        transform: `translate(${left}px, ${top}px)`,
-        width: `${w}px`,
-        height: `${h}px`,
-        opacity: span(u, -0.1, 0.08),
-      })
-      // What shows is centred in the box, so a part swapped in mid-change stays put while the box moves.
-      const see = part.see
-      content.style.transform = `translate(${w / 2}px, ${h / 2}px) scale(${scale}) translate(${-(see.x + see.w / 2)}px, ${-(see.y + see.h / 2)}px)`
-      content.style.opacity = part.clear
-      /** A point of the app, on the stage, as the lifted part shows it. */
-      const place = (x, y) => [
-        left + w / 2 + (x - (see.x + see.w / 2)) * scale,
-        top + h / 2 + (y - (see.y + see.h / 2)) * scale,
-      ]
+      // The part lifts off its place as it comes in, and settles back to go.
+      const come = mech(span(u, cutIn ? 0 : -0.05, cutIn ? 0.45 : 0.5))
+      const go = data.exit ? mech(span(u, length - 0.28, length - 0.02)) : 0
+      const up = come * (1 - go)
+      const scale = lerp(1 / LIFT, 1, up)
+      card.style.opacity = Math.min(span(u, cutIn ? 0 : -0.05, cutIn ? 0.16 : 0.12), 1 - span(u, length - 0.14, length - 0.02) * (data.exit ? 1 : 0))
+      card.style.transform = `translateY(${(1 - up) * 10}px) scale(${scale})`
+      card.style.setProperty('--lift', up)
 
-      // Over the lifted part the pointer moves as the part shows it; well clear of it, as the plan does.
+      /** A point of the app, on the stage, as the part shows it. */
+      const place = (x, y) => [cx + (x - (box.x + box.w / 2)) * S * scale, cy + (1 - up) * 10 + (y - (box.y + box.h / 2)) * S * scale]
+
+      // Over the part the pointer moves as the part shows it; off it, as the window does, and faint.
       const p = pointer(tau)
-      const off = Math.hypot(Math.max(part.x - p.x, 0, p.x - part.x - part.w), Math.max(part.y - p.y, 0, p.y - part.y - part.h))
+      const off = Math.hypot(Math.max(box.x - p.x, 0, p.x - box.x - box.w), Math.max(box.y - p.y, 0, p.y - box.y - box.h))
       const near = 1 - inOutCubic(span(off, 0, 120))
       const onPart = place(p.x, p.y)
       const px = lerp(WINDOW.x + p.x * K, onPart[0], near)
@@ -291,46 +358,13 @@ export function shot({ data, video: src, lead = 0, tail = 0 }) {
         node.style.setProperty('--d', age < 0 ? 0 : (1 - span(age, 0, 0.22)) * 0.5)
       })
       cursor.style.transform = `translate(${px - 6}px, ${py - 4}px) scale(${1.12 - press * 0.16})`
-      // Off the part, the pointer is on the dimmed plan: it dims with it. Once its
-      // work is done it can leave, so it never stands over what the shot ends on.
-      // With nothing to do yet it can wait off screen (`cursorIn`).
-      const come = data.cursorIn ? span(u, data.cursorIn[0], data.cursorIn[1]) : span(u, 0.1, 0.4)
+      // It comes in once the part is up, and can leave once its work is done
+      // (`cursorOut`), or wait off screen until it has some (`cursorIn`).
+      const showing = data.cursorIn ? span(u, data.cursorIn[0], data.cursorIn[1]) : span(u, cutIn ? 0.1 : 0.15, cutIn ? 0.3 : 0.4)
       const gone = data.cursorOut ? 1 - span(u, data.cursorOut[0], data.cursorOut[1]) : 1
-      cursor.style.opacity = come * lerp(0.2, 1, near) * gone
+      cursor.style.opacity = showing * lerp(0, 1, near) * gone * (1 - go)
 
-      // Notes and rings come and go on their own times, anchored in the app.
-      for (const pill of pills) {
-        const d = pill.dataset
-        const inK = snap(span(u, +d.in, +d.in + 0.2))
-        const outK = mech(span(u, +d.out - 0.14, +d.out))
-        const [ax, ay] = place(+d.x, +d.y)
-        const gap = 20
-        const pw = pill.offsetWidth
-        const ph = pill.offsetHeight
-        const tailAt = +(d.tail ?? 28)
-        pill.style.setProperty('--tail', `${tailAt - 7}px`)
-        const at = {
-          up: [ax - tailAt, ay - ph - gap],
-          down: [ax - tailAt, ay + gap],
-          left: [ax - pw - gap, ay - ph / 2],
-          right: [ax + gap, ay - ph / 2],
-        }[d.dir]
-        // A note drops in like a flap, hinged at its top edge, and folds back up to go.
-        pill.style.transformOrigin = '50% 0'
-        pill.style.transform = `translate(${at[0]}px, ${at[1]}px) perspective(500px) rotateX(${-90 * (1 - inK) + 90 * outK}deg)`
-        pill.style.opacity = inK > 0 && outK < 1 ? 1 : 0
-      }
       build?.(u)
-      for (const ring of rings) {
-        const d = ring.dataset
-        const inK = snap(span(u, +d.in, +d.in + 0.18))
-        const grow = lerp(10, 0, inK)
-        ring.style.left = `${+d.x - grow}px`
-        ring.style.top = `${+d.y - grow}px`
-        ring.style.width = `${+d.w + grow * 2}px`
-        ring.style.height = `${+d.h + grow * 2}px`
-        ring.style.opacity = u >= +d.in && u < +d.out ? 1 : 0
-      }
     },
   }
 }
