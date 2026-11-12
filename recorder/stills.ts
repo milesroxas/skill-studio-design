@@ -38,11 +38,27 @@ const starts = (label: string, sel = 'button') =>
   `[...document.querySelectorAll(${q(sel)})].find((b) => b.textContent.trim().startsWith(${q(label)}) && b.getBoundingClientRect().width > 0)`
 const line = (t: string) => `[...document.querySelectorAll('.cm-line')].find((l) => l.textContent.includes(${q(t)}))`
 const POPOVER = `document.querySelector('[data-slot="popover-content"]')`
+const ANCHORS = ['In progress', 'v0 · First draft', 'v1 · Lead with the change', 'Missed', 'Marked as met by you', 'Writing checks', 'Best practice', 'What drifts', 'Improve a rule', 'Claude Code is signed in', 'Anthropic']
+const PROBE = `(() => {
+  const box = (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height } }
+  const tag = (e) => e.tagName.toLowerCase() + (e.getAttribute('aria-label') ? '[' + e.getAttribute('aria-label') + ']' : '') + (e.dataset.slot ? '{' + e.dataset.slot + '}' : '') + ' .' + String(e.className).slice(0, 90)
+  const marks = [...document.querySelectorAll('nav, header, main, aside, section, [role=dialog], [data-slot], [aria-label], .cm-line')]
+    .filter((e) => e.getBoundingClientRect().width > 40 && e.checkVisibility()).map((e) => ({ t: tag(e), ...box(e), text: e.textContent.trim().slice(0, 50) }))
+  const anchors = {}
+  for (const a of ${JSON.stringify(ANCHORS)}) {
+    const hit = [...document.querySelectorAll('body *')].filter((e) => e.children.length === 0 && e.textContent.trim().startsWith(a) && e.checkVisibility())[0]
+    if (!hit) continue
+    const chain = []
+    for (let e = hit; e && e !== document.body; e = e.parentElement) chain.push({ t: tag(e), ...box(e) })
+    anchors[a] = chain
+  }
+  return { marks, anchors }
+})()`
 
 try {
   const page = await connect(port)
   await appReady(page)
-  await page.send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 2, mobile: false })
+  await page.send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: Number(process.env.STILLS_SCALE ?? 2), mobile: false })
   await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] })
   const waitFor = async (expr: string, ms = 30000) => {
     for (let i = 0; i < ms / 100; i += 1) {
@@ -60,6 +76,8 @@ try {
     const { data } = await page.send('Page.captureScreenshot', { format: 'png' })
     writeFileSync(`${OUT}/${name}.png`, Buffer.from(String(data), 'base64'))
     console.log(`out/stills/${name}.png`)
+    // The boxes a mockup crops to: landmarks, and every ancestor of each anchor text.
+    if (process.env.STILLS_PROBE) writeFileSync(`${OUT}/${name}.rects.json`, JSON.stringify(await page.run(PROBE), null, 1))
   }
   const go = async (route: string) => {
     await page.run(`window.location.hash = ${q(route)}`)

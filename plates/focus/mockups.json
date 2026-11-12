@@ -1,0 +1,42 @@
+[
+ {
+  "name": "skill-studio-intro-library",
+  "w": 1600,
+  "h": 900
+ },
+ {
+  "name": "skill-studio-one-screen",
+  "w": 1600,
+  "h": 900
+ },
+ {
+  "name": "skill-studio-mark-met",
+  "w": 1632,
+  "h": 1088
+ },
+ {
+  "name": "skill-studio-walkthrough",
+  "w": 1632,
+  "h": 1088
+ },
+ {
+  "name": "skill-studio-selection-tools",
+  "w": 1632,
+  "h": 1088
+ },
+ {
+  "name": "skill-studio-auto-refine",
+  "w": 1600,
+  "h": 900
+ },
+ {
+  "name": "skill-studio-suggest-changes",
+  "w": 1600,
+  "h": 900
+ },
+ {
+  "name": "skill-studio-help-me-improve",
+  "w": 1600,
+  "h": 900
+ }
+]
