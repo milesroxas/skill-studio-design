@@ -13,6 +13,9 @@ This repo holds no app code. It is kept separate so its work never runs the app'
 | `walkthrough/` | The 66 s guided walkthrough reel, an OpenFilm project. |
 | `walkthrough-visual/` | The same reel with no words of its own: 64 s, the app alone, larger. |
 | `recorder/` | Scripts that film the app and build the reel's pages, cut list and sound. |
+| `skills/social-post/` | A skill that writes a social post and renders its image in Skill Studio's brand. Use it in Claude Code for real posts; it is also the mock kit's sample skill. |
+| `kit/` | The mock kit: the real app on a made-up home built around social-post, a stand-in `claude`, and a frame-by-frame film engine. See [kit/README.md](kit/README.md). |
+| `editor-ai/` | A film of the editor's AI features, made with the kit: 2880 x 1920 (3:2), 60 fps. |
 
 Renders, filmed clips and generated audio are not committed. The build below recreates them.
 

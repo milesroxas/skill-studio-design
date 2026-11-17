@@ -1,0 +1,66 @@
+#!/usr/bin/env node
+// Stand-in for the `claude` CLI while the app is filmed: answers the editor's
+// Suggest changes, Auto refine and Help me improve, and the assistant, from the
+// answers file in $FILM_ANSWERS, so no model runs. Each kind waits for the
+// film to open its gate ($FILM_GATES/<kind>), so a reply lands when the script
+// chooses, then streams in steady chunks.
+//
+// Answers file: { "<kind>": [{ "when": "text", "in": "selection"|"prompt"|"system", "reply": ... }] }
+// The first entry whose `when` is in the selection the editor sent (or, with
+// `in`, the whole prompt or the system prompt) answers;
+// an entry with no `when` answers anything. `reply` is an object for rewrites
+// and refine (the JSON the app's schema asks for) and a string otherwise.
+import { appendFileSync, existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+const args = process.argv.slice(2)
+const log = (line) => process.env.FILM_STUB_LOG && appendFileSync(process.env.FILM_STUB_LOG, `${line}\n`)
+const say = (event) => process.stdout.write(`${JSON.stringify(event)}\n`)
+const sleep = (ms) => new Promise((done) => setTimeout(done, ms))
+
+if (args[0] === 'auth') {
+  say({ loggedIn: true, authMethod: 'claude.ai', subscriptionType: 'max' })
+  process.exit(0)
+}
+if (args[0] === '--version') {
+  process.stdout.write('2.4.0 (Claude Code)\n')
+  process.exit(0)
+}
+
+const arg = (flag) => (args.includes(flag) ? args[args.indexOf(flag) + 1] : '')
+const schema = arg('--json-schema')
+const system = arg('--system-prompt')
+const answers = process.env.FILM_ANSWERS ? JSON.parse(readFileSync(process.env.FILM_ANSWERS, 'utf8')) : {}
+
+let prompt = ''
+process.stdin.on('data', (chunk) => (prompt += chunk))
+process.stdin.on('end', async () => {
+  const kind = schema ? (schema.includes('revision') ? 'refine' : 'rewrites') : system.includes('improve one rule') ? 'improve' : 'chat'
+  // What the editor asks about: the text between <selection> tags, or the whole prompt without them.
+  const selection = /<selection>\n?([\s\S]*?)\n?<\/selection>/.exec(prompt)?.[1] ?? prompt
+  const space = (a) => (a.in === 'system' ? system : a.in === 'prompt' ? prompt : selection)
+  const entry = (answers[kind] ?? []).find((a) => !a.when || space(a).includes(a.when))
+  log(`${kind}\t${entry ? entry.when ?? '(any)' : 'NO ANSWER'}`)
+  const gate = process.env.FILM_GATES && join(process.env.FILM_GATES, kind)
+  if (gate) while (!existsSync(gate)) await sleep(30)
+  say({ type: 'system', subtype: 'init', model: 'claude-sonnet-5-5' })
+  if (!entry) {
+    say({ type: 'result', subtype: 'error', is_error: true, result: `The film's answers have nothing for ${kind}.` })
+    return
+  }
+  if (schema) {
+    const json = JSON.stringify(entry.reply)
+    for (let i = 0; i < json.length; i += 18) {
+      await sleep(16)
+      say({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'input_json_delta', partial_json: json.slice(i, i + 18) } } })
+    }
+    say({ type: 'result', subtype: 'success', is_error: false, result: '', structured_output: entry.reply, usage: { input_tokens: 2100, output_tokens: 90 } })
+    return
+  }
+  const text = String(entry.reply)
+  for (let i = 0; i < text.length; i += 8) {
+    await sleep(16)
+    say({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: text.slice(i, i + 8) } } })
+  }
+  say({ type: 'result', subtype: 'success', is_error: false, result: text, usage: { input_tokens: 1800, output_tokens: 60 } })
+})

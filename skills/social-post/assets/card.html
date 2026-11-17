@@ -1,0 +1,102 @@
+<!doctype html>
+<!-- The social image. scripts/render.mjs puts the post in POST below and the folder of this file in BASE. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<base href="__BASE__">
+<style>
+  @font-face { font-family: "Geist"; src: url("fonts/Geist.woff2") format("woff2"); font-weight: 100 900; }
+  @font-face { font-family: "Geist Mono"; src: url("fonts/GeistMono.woff2") format("woff2"); font-weight: 100 900; }
+  :root {
+    --ink: #0a1020;
+    --porcelain: #f4f2eb;
+    --signal: #f0f059;
+    --hairline: rgb(244 242 235 / 0.16);
+    --quiet: rgb(244 242 235 / 0.64);
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { background: var(--ink); color: var(--porcelain); font-family: "Geist", sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; }
+  .frame { position: relative; overflow: hidden; background: var(--ink); }
+  .words { position: absolute; left: 64px; top: 64px; display: flex; flex-direction: column; gap: 24px; }
+  .eyebrow { font-family: "Geist Mono", monospace; font-size: 18px; letter-spacing: 0.01em; color: var(--quiet); }
+  h1 { font-weight: 600; font-size: 60px; line-height: 1.04; letter-spacing: -0.025em; text-wrap: balance; }
+  /* The slab: square to the page, hanging 8px left of its word, ink type on it. */
+  .slab { position: relative; color: var(--ink); white-space: nowrap; }
+  .slab::before { content: ""; position: absolute; z-index: -1; left: -8px; right: -6px; top: 0.06em; bottom: -0.02em; background: var(--signal); }
+  h1 { position: relative; z-index: 0; }
+  .line { font-size: 22px; line-height: 1.4; color: var(--quiet); text-wrap: pretty; }
+  .mark { position: absolute; left: 64px; bottom: 56px; width: 44px; color: var(--porcelain); }
+  .mark svg, .ghost svg { display: block; width: 100%; height: auto; }
+  .sheet { position: absolute; border: 1px solid var(--hairline); border-radius: 10px 0 0 0; border-right: 0; border-bottom: 0; overflow: hidden; background: var(--ink); }
+  .sheet img { position: absolute; display: block; }
+  .ghost { position: absolute; color: rgb(244 242 235 / 0.08); }
+</style>
+</head>
+<body>
+<div class="frame" id="frame">
+  <div class="words">
+    <div class="eyebrow" id="eyebrow"></div>
+    <h1 id="headline"></h1>
+    <p class="line" id="line"></p>
+  </div>
+  <div class="mark" id="mark"></div>
+</div>
+<script>
+  const POST = __POST__
+  const MARK = __MARK__
+  const SIZES = { x: [1200, 675], linkedin: [1200, 627], square: [1080, 1080] }
+  const [w, h] = SIZES[POST.size ?? 'x']
+  const frame = document.getElementById('frame')
+  frame.style.width = `${w}px`
+  frame.style.height = `${h}px`
+  const square = w === h
+  const words = document.querySelector('.words')
+  words.style.width = `${square ? w - 128 : Math.round(w * 0.42)}px`
+  document.getElementById('eyebrow').textContent = POST.eyebrow ?? 'Skill Studio'
+  const headline = document.getElementById('headline')
+  const slab = POST.slab ?? ''
+  const at = slab ? POST.headline.indexOf(slab) : -1
+  if (at < 0) headline.textContent = POST.headline
+  else {
+    headline.append(POST.headline.slice(0, at))
+    const span = document.createElement('span')
+    span.className = 'slab'
+    span.textContent = slab
+    headline.append(span, POST.headline.slice(at + slab.length))
+  }
+  document.getElementById('line').textContent = POST.line ?? ''
+  document.getElementById('mark').innerHTML = MARK
+  // Right of the words, or under them on a square: the screenshot as a sheet off the frame's edges,
+  // or the mark cropped by the frame when there is no screenshot.
+  const box = square ? { left: 64, top: Math.round(h * 0.5) } : { left: Math.round(w * 0.5), top: 64 }
+  box.width = w - box.left
+  box.height = h - box.top
+  if (POST.shot) {
+    const sheet = document.createElement('div')
+    sheet.className = 'sheet'
+    Object.assign(sheet.style, { left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px` })
+    const img = new Image()
+    img.onload = () => {
+      // Show the shot at half its pixels (a 2x screenshot at its own size), centred on `focus`, kept inside the sheet.
+      const iw = img.naturalWidth / 2
+      const ih = img.naturalHeight / 2
+      const [fx, fy] = POST.focus ?? [0.5, 0.5]
+      const x = Math.min(0, Math.max(box.width - iw, box.width / 2 - iw * fx))
+      const y = Math.min(0, Math.max(box.height - ih, box.height / 2 - ih * fy))
+      Object.assign(img.style, { width: `${iw}px`, height: `${ih}px`, left: `${x}px`, top: `${y}px` })
+      document.body.dataset.ready = '1'
+    }
+    img.src = POST.shot
+    sheet.append(img)
+    frame.append(sheet)
+  } else {
+    const ghost = document.createElement('div')
+    ghost.className = 'ghost'
+    ghost.innerHTML = MARK
+    Object.assign(ghost.style, { left: `${box.left + 40}px`, top: `${box.top + 20}px`, width: `${box.width * 1.1}px` })
+    frame.append(ghost)
+    document.body.dataset.ready = '1'
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "editor-ai",
+  "version": "1.0.0",
+  "description": "Skill Studio editor AI film",
+  "scripts": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "playwright-core": "^1.65.1"
+  },
+  "private": true
+}

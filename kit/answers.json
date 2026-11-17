@@ -1,0 +1,49 @@
+{
+  "rewrites": [
+    {
+      "when": "try to add alt text",
+      "reply": {
+        "practice": "- For a launch post, always add alt text and the link. A reader who cannot see the image or find the feature moves on.",
+        "direct": "- For a launch post, add alt text, the link, the hashtags and the brand mark, so people can find it.",
+        "split": "- For a launch post, write alt text that says what the image shows. A reader using a screen reader gets the post from it.\n- End the text with the link and the hashtags. A tag in the middle of a sentence breaks it.\n- Put the Skill Studio mark in a corner of the image. A screenshot shared without the post still says whose it is."
+      }
+    },
+    {
+      "reply": {
+        "practice": "- Write as one colleague writes to another: plain words, no exclamation marks. A post that reads like an ad gets skipped.",
+        "direct": "- Write in plain words, with no exclamation marks.",
+        "shorter": "- Keep the tone friendly."
+      },
+      "when": "reasonably friendly"
+    }
+  ],
+  "refine": [
+    {
+      "when": "launch post",
+      "reply": {
+        "revision": "- For a launch post, always add alt text and the link. A reader who cannot see the image or find the feature moves on."
+      }
+    },
+    {
+      "when": "reasonably friendly",
+      "reply": {
+        "revision": "- Write as one colleague writes to another: plain words, no exclamation marks. A post that reads like an ad gets skipped."
+      }
+    }
+  ],
+  "improve": [
+    {
+      "when": "fenced code block",
+      "in": "system",
+      "reply": "It now says why the version matters.\n\n```\n- Put the version number in the image. A reader checks it before updating, and without it assumes the change already shipped.\n```\n\nDoes this say what you meant?"
+    },
+    {
+      "reply": "What goes wrong for a reader when the image leaves the version out?"
+    }
+  ],
+  "chat": [
+    {
+      "reply": "Rule 08 says where the version goes but not why. Say what a reader gets wrong without it."
+    }
+  ]
+}
